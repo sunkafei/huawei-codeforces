@@ -71,9 +71,7 @@ void add(int j) {
             const int r = order[t][n][i];
             if (!vis[t][r]) {
                 occupy.emplace_back(t, r);
-                for (int k = 0; k < K; ++k) {
-                    tbs -= std::log2(1.0 + sinr[t][k][r][n]);
-                }
+                tbs -= sinr_sum[t][n][r];
                 if (tbs < 0) {
                     goto end;
                 }
@@ -92,7 +90,14 @@ void add(int j) {
     }
 }
 void solve() {
+    std::vector<int> indices;
     for (int j = 0; j < J; ++j) {
+        indices.push_back(j);
+    }
+    std::sort(indices.begin(), indices.end(), [](int x, int y) {
+        return start[x] < start[y];
+    });
+    for (auto j : indices) {
         add(j);
     }
     for (int t = 0; t < T; ++t) {
