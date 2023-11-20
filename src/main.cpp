@@ -6,11 +6,13 @@ constexpr int MAXR = 10 + 1;
 constexpr int MAXJ = 5000 + 1;
 constexpr int MAXBUFFER = 1024 * 1024;
 int N, K, T, R, J;
-double SINR[MAXT][MAXK][MAXR][MAXN], D[MAXK][MAXR][MAXN][MAXN];
+double sinr[MAXT][MAXK][MAXR][MAXN], D[MAXK][MAXR][MAXN][MAXN];
 int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
 double power[MAXT][MAXK][MAXR][MAXN];
 char buffer[MAXBUFFER * 2];
 const char *pointer = buffer + MAXBUFFER;
+double sinr_sum[MAXT][MAXN][MAXR];
+int order[MAXT][MAXN][MAXR];
 inline int read_int() {
     const int rest = buffer + MAXBUFFER - pointer;
     if (rest < 128) {
@@ -65,11 +67,12 @@ void add(int j) {
     double tbs = ::tbs[j] / 192.0;
     std::vector<std::pair<int, int>> occupy; 
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
-        for (int r = 0; r < R; ++r) {
+        for (int i = 0; i < R; ++i) {
+            const int r = order[t][n][i];
             if (!vis[t][r]) {
                 occupy.emplace_back(t, r);
                 for (int k = 0; k < K; ++k) {
-                    tbs -= std::log2(1.0 + SINR[t][k][r][n]);
+                    tbs -= std::log2(1.0 + sinr[t][k][r][n]);
                 }
                 if (tbs < 0) {
                     goto end;
@@ -104,6 +107,27 @@ void solve() {
         }
     }
 }
+void preprocess() {
+    for (int t = 0; t < T; ++t) {
+        for (int k = 0; k < K; ++k) {
+            for (int r = 0; r < R; ++r) {
+                for (int n = 0; n < N; ++n) {
+                    sinr_sum[t][n][r] += std::log2(1.0 + sinr[t][k][r][n]);
+                }
+            }
+        }
+    }
+    for (int t = 0; t < T; ++t) {
+        for (int n = 0; n < N; ++n) {
+            for (int r = 0; r < R; ++r) {
+                order[t][n][r] = r;
+            }
+            std::sort(order[t][n], order[t][n] + R, [val=sinr_sum[t][n]](int x, int y) {
+                return val[x] > val[y];
+            });
+        }
+    }
+}
 int main() {
 #ifdef __SMZ_NATIVE
     freopen("in.txt", "r", stdin);
@@ -116,7 +140,7 @@ int main() {
         for (int j = 0; j < K; ++j) {
             for (int k = 0; k < R; ++k) {
                 for (int x = 0; x < N; ++x) {
-                    SINR[i][j][k][x] = read_double();
+                    sinr[i][j][k][x] = read_double();
                 }
             }
         }
@@ -138,6 +162,7 @@ int main() {
         start[i] = read_int();
         length[i] = read_int();
     }
+    preprocess();
     solve();
     return 0;
 }
