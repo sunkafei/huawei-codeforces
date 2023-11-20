@@ -83,7 +83,7 @@ void solve() {
             for (int r = 0; r < R; ++r) {
                 for (int x = 0; x < N; ++x) {
                     if (x != 0) putchar(' ');
-                    printf("%f", power[t][k][r][x]);
+                    printf("%.9f", power[t][k][r][x]);
                 }
                 puts("");
             }
