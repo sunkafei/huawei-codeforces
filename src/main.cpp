@@ -59,24 +59,38 @@ inline double read_double() {
     }
     return flag * x;
 }
-int count[MAXT], vis[MAXT][MAXN];
-void solve() {
-    for (int j = 0; j < J; ++j) {
-        for (int i = start[j]; i < start[j] + length[j]; ++i) {
-            count[i] += 1;
-            vis[i][belong[j]] = true;
-        }
-    }
-    for (int t = 0; t < T; ++t) {
-        for (int k = 0; k < K; ++k) {
-            for (int r = 0; r < R; ++r) {
-                for (int x = 0; x < N; ++x) {
-                    if (vis[t][x]) {
-                        power[t][k][r][x] = 1.0 / count[t];
-                    }
+int vis[MAXT][MAXR];
+void add(int j) {
+    const int n = belong[j];
+    double tbs = ::tbs[j] / 192.0;
+    std::vector<std::pair<int, int>> occupy; 
+    for (int t = start[j]; t < start[j] + length[j]; ++t) {
+        for (int r = 0; r < R; ++r) {
+            if (!vis[t][r]) {
+                occupy.emplace_back(t, r);
+                for (int k = 0; k < K; ++k) {
+                    tbs -= std::log2(1.0 + SINR[t][k][r][n]);
                 }
+                if (tbs < 0) {
+                    goto end;
+                }
+                break;
             }
         }
+    }
+    end:;
+    if (tbs < 0) {
+        for (auto [t, r] : occupy) {
+            vis[t][r] = true;
+            for (int k = 0; k < K; ++k) {
+                power[t][k][r][n] = 1;
+            }
+        }
+    }
+}
+void solve() {
+    for (int j = 0; j < J; ++j) {
+        add(j);
     }
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
