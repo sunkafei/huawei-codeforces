@@ -1,4 +1,5 @@
 #include <bits/stdc++.h>
+#include <sys/time.h>
 constexpr int MAXN = 100 + 1;
 constexpr int MAXK = 10 + 1;
 constexpr int MAXT = 1000 + 1;
@@ -8,11 +9,24 @@ constexpr int MAXBUFFER = 1024 * 1024;
 int N, K, T, R, J;
 double sinr[MAXT][MAXK][MAXR][MAXN], D[MAXK][MAXR][MAXN][MAXN];
 int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
-double power[MAXT][MAXK][MAXR][MAXN];
 char buffer[MAXBUFFER * 2];
 const char *pointer = buffer + MAXBUFFER;
 double sinr_sum[MAXT][MAXN][MAXR];
 int order[MAXT][MAXN][MAXR];
+uint64_t start_time;
+inline auto mutime() {
+    timeval v;
+    gettimeofday(&v, nullptr);
+    return v.tv_usec + v.tv_sec * 1000000;
+}
+inline auto tle() noexcept {
+    auto now = mutime();
+    auto runtime = now - start_time;
+    if (runtime > 1200 * 1000) {
+        return true;
+    }
+    return false;
+}
 inline int read_int() {
     const int rest = buffer + MAXBUFFER - pointer;
     if (rest < 128) {
@@ -61,8 +75,25 @@ inline double read_double() {
     }
     return flag * x;
 }
+double power[MAXT][MAXK][MAXR][MAXN], answer[MAXT][MAXK][MAXR][MAXN];
 int vis[MAXT][MAXR];
-void add(int j) {
+inline void init() {
+    for (int t = 0; t < T; ++t) {
+        for (int k = 0; k < K; ++k) {
+            for (int r = 0; r < R; ++r) {
+                for (int x = 0; x < N; ++x) {
+                    power[t][k][r][x] = 0;
+                }
+            }
+        }
+    }
+    for (int t = 0; t < T; ++t) {
+        for (int r = 0; r < MAXR; ++r) {
+            vis[t][r] = false;
+        }
+    }
+}
+inline bool add(int j) {
     const int n = belong[j];
     double tbs = ::tbs[j] / 192.0;
     std::vector<std::pair<int, int>> occupy; 
@@ -87,9 +118,12 @@ void add(int j) {
                 power[t][k][r][n] = 1;
             }
         }
+        return true;
     }
+    return false;
 }
 void solve() {
+    std::mt19937 engine;
     std::vector<int> indices;
     for (int j = 0; j < J; ++j) {
         indices.push_back(j);
@@ -97,15 +131,33 @@ void solve() {
     std::sort(indices.begin(), indices.end(), [](int x, int y) {
         return start[x] < start[y];
     });
-    for (auto j : indices) {
-        add(j);
+    int best = 0;
+    while (!tle()) {
+        init();
+        int cnt = 0;
+        for (auto j : indices) {
+            cnt += add(j);
+        }
+        if (cnt > best) {
+            best = cnt;
+            for (int t = 0; t < T; ++t) {
+                for (int k = 0; k < K; ++k) {
+                    for (int r = 0; r < R; ++r) {
+                        for (int x = 0; x < N; ++x) {
+                            answer[t][k][r][x] = power[t][k][r][x];
+                        }
+                    }
+                }
+            }
+        }
+        std::shuffle(indices.begin(), indices.end(), engine);
     }
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
                 for (int x = 0; x < N; ++x) {
                     if (x != 0) putchar(' ');
-                    printf("%.9f", power[t][k][r][x]);
+                    printf("%.9f", answer[t][k][r][x]);
                 }
                 puts("");
             }
@@ -134,6 +186,7 @@ void preprocess() {
     }
 }
 int main() {
+    start_time = mutime();
 #ifdef __SMZ_NATIVE
     freopen("in.txt", "r", stdin);
 #endif
