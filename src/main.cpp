@@ -59,12 +59,21 @@ inline double read_double() {
     }
     return flag * x;
 }
+int count[MAXT], vis[MAXT][MAXN];
 void solve() {
+    for (int j = 0; j < J; ++j) {
+        for (int i = start[j]; i < start[j] + length[j]; ++i) {
+            count[i] += 1;
+            vis[i][belong[j]] = true;
+        }
+    }
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
                 for (int x = 0; x < N; ++x) {
-                    power[t][k][r][x] = 1.0 / N;
+                    if (vis[t][x]) {
+                        power[t][k][r][x] = 1.0 / count[t];
+                    }
                 }
             }
         }
@@ -73,10 +82,10 @@ void solve() {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
                 for (int x = 0; x < N; ++x) {
-                    if (x != 0) printf(" ");
+                    if (x != 0) putchar(' ');
                     printf("%f", power[t][k][r][x]);
                 }
-                printf("\n");
+                puts("");
             }
         }
     }
