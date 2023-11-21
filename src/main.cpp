@@ -75,15 +75,15 @@ inline double read_double() {
     }
     return flag * x;
 }
-double power[MAXT][MAXK][MAXR][MAXN], answer[MAXT][MAXK][MAXR][MAXN];
+double power[MAXN][MAXT][MAXR][MAXK], answer[MAXN][MAXT][MAXR][MAXK];
 double rest[MAXT][MAXK];
 int vis[MAXT][MAXR], thickness[MAXT];
 inline void init() {
-    for (int t = 0; t < T; ++t) {
-        for (int k = 0; k < K; ++k) {
+    for (int n = 0; n < N; ++n) {
+        for (int t = 0; t < T; ++t) {
             for (int r = 0; r < R; ++r) {
-                for (int x = 0; x < N; ++x) {
-                    power[t][k][r][x] = 0;
+                for (int k = 0; k < K; ++k) {
+                    power[n][t][r][k] = 0;
                 }
             }
         }
@@ -119,8 +119,8 @@ inline bool add(int j) {
         double sum = 0;
         for (auto [_, val, t, r] : candidates) {
             for (int k = 0; k < K; ++k) {
-                power[t][k][r][n] = std::min(v - 1, rest[t][k]);
-                sum += std::log2(1.0 + power[t][k][r][n] * sinr[n][t][r][k]);
+                power[n][t][r][k] = std::min(v - 1, rest[t][k]);
+                sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
             }
         }
         int last = -1;
@@ -128,9 +128,9 @@ inline bool add(int j) {
             vis[t][r] = true;
             for (int x = 0; x < K; ++x) {
                 int k = order2[n][t][r][x];
-                sum -= std::log2(1.0 + power[t][k][r][n] * sinr[n][t][r][k]);
-                power[t][k][r][n] = std::min(v, rest[t][k]);
-                sum += std::log2(1.0 + power[t][k][r][n] * sinr[n][t][r][k]);
+                sum -= std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
+                power[n][t][r][k] = std::min(v, rest[t][k]);
+                sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
                 if (sum > tbs) {
                     goto finish;
                 }
@@ -143,7 +143,7 @@ inline bool add(int j) {
                     thickness[t] += 1;
                 }
                 for (int k = 0; k < K; ++k) {
-                    rest[t][k] -= power[t][k][r][n];
+                    rest[t][k] -= power[n][t][r][k];
                 }
             }
             return true;
@@ -152,7 +152,7 @@ inline bool add(int j) {
     for (auto [_, val, t, r] : candidates) {
         vis[t][r] = false;
         for (int k = 0; k < K; ++k) {
-            power[t][k][r][n] = 0;
+            power[n][t][r][k] = 0;
         }
     }
     return false;
@@ -175,11 +175,11 @@ void solve() {
         }
         if (cnt > best) {
             best = cnt;
-            for (int t = 0; t < T; ++t) {
-                for (int k = 0; k < K; ++k) {
+            for (int n = 0; n < N; ++n) {
+                for (int t = 0; t < T; ++t) {
                     for (int r = 0; r < R; ++r) {
-                        for (int x = 0; x < N; ++x) {
-                            answer[t][k][r][x] = power[t][k][r][x];
+                        for (int k = 0; k < K; ++k) {
+                            answer[n][t][r][k] = power[n][t][r][k];
                         }
                     }
                 }
@@ -190,9 +190,8 @@ void solve() {
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
-                for (int x = 0; x < N; ++x) {
-                    if (x != 0) putchar(' ');
-                    printf("%.9f", answer[t][k][r][x]);
+                for (int n = 0; n < N; ++n) {
+                    printf("%.9f ", answer[n][t][r][k]);
                 }
                 puts("");
             }
