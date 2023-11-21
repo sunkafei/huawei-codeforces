@@ -7,12 +7,12 @@ constexpr int MAXR = 10 + 1;
 constexpr int MAXJ = 5000 + 1;
 constexpr int MAXBUFFER = 1024 * 1024;
 int N, K, T, R, J;
-double sinr[MAXT][MAXK][MAXR][MAXN], D[MAXK][MAXR][MAXN][MAXN];
+double sinr[MAXN][MAXT][MAXR][MAXK], D[MAXK][MAXR][MAXN][MAXN];
 int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
 char buffer[MAXBUFFER * 2];
 const char *pointer = buffer + MAXBUFFER;
-double sinr_sum[MAXT][MAXN][MAXR];
-int order[MAXT][MAXN][MAXR];
+double sinr_sum[MAXN][MAXT][MAXR];
+int order[MAXN][MAXT][MAXR], order2[MAXN][MAXT][MAXR][MAXK];
 uint64_t start_time;
 inline auto mutime() {
     timeval v;
@@ -107,9 +107,9 @@ inline bool add(int j) {
     std::vector<item_t> candidates; 
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         for (int i = 0; i < R; ++i) {
-            const int r = order[t][n][i];
+            const int r = order[n][t][i];
             if (!vis[t][r]) {
-                candidates.emplace_back(thickness[t], -sinr_sum[t][n][r], t, r);
+                candidates.emplace_back(thickness[t], -sinr_sum[n][t][r], t, r);
                 break;
             }
         }
@@ -120,16 +120,17 @@ inline bool add(int j) {
         for (auto [_, val, t, r] : candidates) {
             for (int k = 0; k < K; ++k) {
                 power[t][k][r][n] = std::min(v - 1, rest[t][k]);
-                sum += std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
+                sum += std::log2(1.0 + power[t][k][r][n] * sinr[n][t][r][k]);
             }
         }
         int last = -1;
         for (auto [_, val, t, r] : candidates) {
             vis[t][r] = true;
-            for (int k = 0; k < K; ++k) {
-                sum -= std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
+            for (int x = 0; x < K; ++x) {
+                int k = order2[n][t][r][x];
+                sum -= std::log2(1.0 + power[t][k][r][n] * sinr[n][t][r][k]);
                 power[t][k][r][n] = std::min(v, rest[t][k]);
-                sum += std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
+                sum += std::log2(1.0 + power[t][k][r][n] * sinr[n][t][r][k]);
                 if (sum > tbs) {
                     goto finish;
                 }
@@ -203,19 +204,31 @@ void preprocess() {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
                 for (int n = 0; n < N; ++n) {
-                    sinr_sum[t][n][r] += std::log2(1.0 + sinr[t][k][r][n]);
+                    sinr_sum[n][t][r] += std::log2(1.0 + sinr[n][t][r][k]);
                 }
             }
         }
     }
-    for (int t = 0; t < T; ++t) {
-        for (int n = 0; n < N; ++n) {
+    for (int n = 0; n < N; ++n) {
+        for (int t = 0; t < T; ++t) {
             for (int r = 0; r < R; ++r) {
-                order[t][n][r] = r;
+                order[n][t][r] = r;
             }
-            std::sort(order[t][n], order[t][n] + R, [val=sinr_sum[t][n]](int x, int y) {
+            std::sort(order[n][t], order[n][t] + R, [val=sinr_sum[n][t]](int x, int y) {
                 return val[x] > val[y];
             });
+        }
+    }
+    for (int n = 0; n < N; ++n) {
+        for (int t = 0; t < T; ++t) {
+            for (int r = 0; r < R; ++r) {
+                for (int k = 0; k < K; ++k) {
+                    order2[n][t][r][k] = k;
+                }
+                std::sort(order2[n][t][r], order2[n][t][r] + K, [val=sinr[n][t][r]](int x, int y) {
+                    return val[x] > val[y];
+                });
+            }
         }
     }
 }
@@ -228,11 +241,11 @@ int main() {
     ::K = read_int();
     ::T = read_int();
     ::R = read_int();
-    for (int i = 0; i < T; ++i) {
-        for (int j = 0; j < K; ++j) {
-            for (int k = 0; k < R; ++k) {
-                for (int x = 0; x < N; ++x) {
-                    sinr[i][j][k][x] = read_double();
+    for (int t = 0; t < T; ++t) {
+        for (int k = 0; k < K; ++k) {
+            for (int r = 0; r < R; ++r) {
+                for (int n = 0; n < N; ++n) {
+                    sinr[n][t][r][k] = read_double();
                 }
             }
         }
