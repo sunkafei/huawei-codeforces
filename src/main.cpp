@@ -95,27 +95,28 @@ inline void init() {
 }
 inline bool add(int j) {
     const int n = belong[j];
-    double tbs = ::tbs[j] / 192.0;
-    std::vector<std::pair<int, int>> occupy; 
+    double tbs = ::tbs[j] / 192.0, sum = 0;
+    std::vector<std::tuple<double, int, int>> candidates; 
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         for (int i = 0; i < R; ++i) {
             const int r = order[t][n][i];
             if (!vis[t][r]) {
-                occupy.emplace_back(t, r);
-                tbs -= sinr_sum[t][n][r];
-                if (tbs < 0) {
-                    goto end;
-                }
+                sum += sinr_sum[t][n][r];
+                candidates.emplace_back(-sinr_sum[t][n][r], t, r);
                 break;
             }
         }
     }
-    end:;
-    if (tbs < 0) {
-        for (auto [t, r] : occupy) {
+    if (sum > tbs) {
+        std::sort(candidates.begin(), candidates.end());
+        for (auto [val, t, r] : candidates) {
             vis[t][r] = true;
             for (int k = 0; k < K; ++k) {
                 power[t][k][r][n] = 1;
+            }
+            tbs += val;
+            if (tbs < 0) {
+                break;
             }
         }
         return true;
