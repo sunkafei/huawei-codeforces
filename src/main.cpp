@@ -116,15 +116,8 @@ inline bool add(int j) {
         }
     }
     std::sort(candidates.begin(), candidates.end());
+    double sum = 0;
     for (double v = 1; v <= 4 + 1e-5; v += 1) {
-        double sum = 0;
-        for (auto [_, val, t, r] : candidates) {
-            for (int k = 0; k < K; ++k) {
-                power[n][t][r][k] = std::min(v - 1, rest[t][k]);
-                sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
-            }
-        }
-        int last = -1;
         for (auto [_, val, t, r] : candidates) {
             vis[t][r] = true;
             for (int x = 0; x < K; ++x) {
@@ -140,18 +133,18 @@ inline bool add(int j) {
                 }
             }
         }
-        finish:;
-        if (sum > tbs) {
-            for (auto [_, val, t, r] : candidates) {
-                if (vis[t][r]) {
-                    thickness[t] += 1;
-                }
-                for (int k = 0; k < K; ++k) {
-                    rest[t][k] -= power[n][t][r][k];
-                }
+    }
+    finish:;
+    if (sum > tbs) {
+        for (auto [_, val, t, r] : candidates) {
+            if (vis[t][r]) {
+                thickness[t] += 1;
             }
-            return true;
+            for (int k = 0; k < K; ++k) {
+                rest[t][k] -= power[n][t][r][k];
+            }
         }
+        return true;
     }
     for (auto [_, val, t, r] : candidates) {
         vis[t][r] = false;
