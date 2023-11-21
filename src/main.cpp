@@ -1,3 +1,4 @@
+#define __SMZ_RUNTIME_CHECK
 #include <bits/stdc++.h>
 #include <sys/time.h>
 constexpr int MAXN = 100 + 1;
@@ -6,7 +7,7 @@ constexpr int MAXT = 1000 + 1;
 constexpr int MAXR = 10 + 1;
 constexpr int MAXJ = 5000 + 1;
 constexpr int MAXBUFFER = 1024 * 1024;
-constexpr double EPS = 1e-5;
+constexpr double EPS = 1e-6;
 int N, K, T, R, J;
 double sinr[MAXN][MAXT][MAXR][MAXK], D[MAXK][MAXR][MAXN][MAXN];
 int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
@@ -78,7 +79,8 @@ inline double read_double() {
 }
 double power[MAXN][MAXT][MAXR][MAXK], answer[MAXN][MAXT][MAXR][MAXK];
 double rest[MAXT][MAXK];
-int vis[MAXT][MAXR], thickness[MAXT];
+int cover[MAXT][MAXR], thickness[MAXT], position[MAXT][MAXR];
+long long visit[MAXT][MAXK], timestamp = 1;
 inline void init() {
     for (int n = 0; n < N; ++n) {
         for (int t = 0; t < T; ++t) {
@@ -92,16 +94,17 @@ inline void init() {
     for (int t = 0; t < T; ++t) {
         thickness[t] = 0;
         for (int r = 0; r < MAXR; ++r) {
-            vis[t][r] = false;
+            cover[t][r] = 0;
         }
     }
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
-            rest[t][k] = R;
+            rest[t][k] = R - EPS;
         }
     }
 }
 inline bool add(int j) {
+    timestamp += 1;
     const int n = belong[j];
     double tbs = ::tbs[j] / 192.0;
     using item_t = std::tuple<int, double, int, int>;
@@ -109,7 +112,7 @@ inline bool add(int j) {
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         for (int i = 0; i < R; ++i) {
             const int r = order[n][t][i];
-            if (!vis[t][r]) {
+            if (!cover[t][r]) {
                 candidates.emplace_back(thickness[t], -sinr_sum[n][t][r], t, r);
                 break;
             }
@@ -117,42 +120,94 @@ inline bool add(int j) {
     }
     std::sort(candidates.begin(), candidates.end());
     double sum = 0;
-    for (double v = 1; v <= 4 + 1e-5; v += 1) {
+    std::vector<std::tuple<int, int, int, int, double>> backup;
+    for (int iteration = 0; iteration < 4; ++iteration) {
         for (auto [_, val, t, r] : candidates) {
-            vis[t][r] = true;
+            if (iteration == 0) {
+                thickness[t] += 1;
+            }
             for (int x = 0; x < K; ++x) {
-                int k = order2[n][t][r][x];
+                auto k = order2[n][t][r][x];
+                auto prev = power[n][t][r][k];
                 sum -= std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
-                power[n][t][r][k] = std::min(v, rest[t][k]);
+                double delta = std::min(rest[t][k], 1.0);
+                power[n][t][r][k] += delta;
+                rest[t][k] -= delta;
                 sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
+                if (prev == 0 && power[n][t][r][k] > 0) {
+                    cover[t][r] += 1;
+                    position[t][r] = k;
+                    visit[t][k] = timestamp;
+                }
                 if (sum > tbs) {
                     double delta = tbs - sum + std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
-                    power[n][t][r][k] = (std::exp2(delta + EPS) - 1) / sinr[n][t][r][k];
+                    power[n][t][r][k] = std::min(power[n][t][r][k], (std::exp2(delta) - 1) / sinr[n][t][r][k] + EPS);
                     sum = tbs + delta;
                     goto finish;
                 }
             }
         }
     }
-    finish:;
-    if (sum > tbs) {
-        for (auto [_, val, t, r] : candidates) {
-            if (vis[t][r]) {
-                thickness[t] += 1;
-            }
-            for (int k = 0; k < K; ++k) {
-                rest[t][k] -= power[n][t][r][k];
+    if (sum < tbs) {
+        for (int t = start[j]; t < start[j] + length[j]; ++t) {
+            for (int r = 0; r < R; ++r) if (cover[t][r] == 1) {
+                int k = position[t][r];
+                if (power[n][t][r][k] > 0 || visit[t][k] == timestamp) {
+                    continue;
+                }
+                int m = 0;
+                for (; m < N; ++m) {
+                    if (power[m][t][r][k] > 0) {
+                        break;
+                    }
+                }
+                auto value = std::log2(1.0 + power[m][t][r][k] * sinr[m][t][r][k]);
+                auto delta = (std::exp2(value) - 1.0) / sinr[m][t][r][k] / D[k][r][n][m] - power[m][t][r][k];
+                if (delta >= rest[t][k]) {
+                    continue;
+                }
+                backup.emplace_back(m, t, r, k, delta);
+                power[m][t][r][k] += delta;
+                power[n][t][r][k] = std::min(rest[t][k] - delta, 1.0);
+                sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k] * D[k][r][n][m]);
+                cover[t][r] += 1;
+                rest[t][r] -= delta + power[n][t][r][k];
+                goto finish;
+                if (sum > tbs) {
+                    goto finish;
+                }
+                break; //todo
             }
         }
+    }
+    finish:;
+    if (sum > tbs) {
         return true;
     }
+    for (auto [m, t, r, k, delta] : backup) {
+        cover[t][r] -= 1;
+        rest[t][r] += delta + power[n][t][r][k];
+        power[m][t][r][k] -= delta;
+        power[n][t][r][k] = 0;
+    }
     for (auto [_, val, t, r] : candidates) {
-        vis[t][r] = false;
+        thickness[t] -= 1;
         for (int k = 0; k < K; ++k) {
-            power[n][t][r][k] = 0;
+            if (power[n][t][r][k] > 0) {
+                cover[t][r] -= 1;
+                rest[t][k] += power[n][t][r][k];
+                power[n][t][r][k] = 0;
+            }
         }
     }
     return false;
+}
+inline void check() {
+    for (int t = 0; t < T; ++t) {
+        if (thickness[t] < 0) {
+            abort();
+        }
+    }
 }
 void solve() {
     std::mt19937 engine;
@@ -169,6 +224,9 @@ void solve() {
         int cnt = 0;
         for (auto j : indices) {
             cnt += add(j);
+#ifdef __SMZ_RUNTIME_CHECK
+            check();
+#endif
         }
         if (cnt > best) {
             best = cnt;
@@ -184,6 +242,25 @@ void solve() {
         }
         std::shuffle(indices.begin(), indices.end(), engine);
     }
+#ifdef __SMZ_NATIVE
+    printf("%d\n", best);
+    for (int t = 0; t < T; ++t) {
+        for (int k = 0; k < K; ++k) {
+            double sum = 0;
+            for (int r = 0; r < R; ++r) {
+                for (int n = 0; n < N; ++n) {
+                    sum += answer[n][t][r][k];
+                    if (answer[n][t][r][k] > 4 || answer[n][t][r][k] < 0) {
+                        abort();
+                    }
+                }
+            }
+            if (sum > R) {
+                abort();
+            }
+        }
+    }
+#else
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
@@ -194,6 +271,7 @@ void solve() {
             }
         }
     }
+#endif
 }
 void preprocess() {
     for (int t = 0; t < T; ++t) {
@@ -231,7 +309,7 @@ void preprocess() {
 int main() {
     start_time = mutime();
 #ifdef __SMZ_NATIVE
-    freopen("in.txt", "r", stdin);
+    freopen("in2.txt", "r", stdin);
 #endif
     ::N = read_int();
     ::K = read_int();
@@ -250,7 +328,7 @@ int main() {
         for (int j = 0; j < R; ++j) {
             for (int x = 0; x < N; ++x) {
                 for (int y = 0; y < N; ++y) {
-                    D[i][j][x][y] = read_double();
+                    D[i][j][x][y] = std::exp(read_double());
                 }
             }
         }
