@@ -123,16 +123,17 @@ inline bool add(int j) {
         }
         int last = -1;
         for (auto [val, t, r] : candidates) {
+            vis[t][r] = true;
             for (int k = 0; k < K; ++k) {
                 sum -= std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
                 power[t][k][r][n] = std::min(v, rest[t][k]);
                 sum += std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
-            }
-            vis[t][r] = true;
-            if (sum > tbs) {
-                break;
+                if (sum > tbs) {
+                    goto finish;
+                }
             }
         }
+        finish:;
         if (sum > tbs) {
             for (auto [val, t, r] : candidates) {
                 for (int k = 0; k < K; ++k) {
@@ -157,7 +158,7 @@ void solve() {
         indices.push_back(j);
     }
     std::sort(indices.begin(), indices.end(), [](int x, int y) {
-        return tbs[x] < tbs[y];
+        return tbs[x] > tbs[y];
     });
     int best = 0;
     while (!tle()) {
