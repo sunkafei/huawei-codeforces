@@ -76,6 +76,7 @@ inline double read_double() {
     return flag * x;
 }
 double power[MAXT][MAXK][MAXR][MAXN], answer[MAXT][MAXK][MAXR][MAXN];
+double rest[MAXT][MAXK];
 int vis[MAXT][MAXR];
 inline void init() {
     for (int t = 0; t < T; ++t) {
@@ -92,34 +93,60 @@ inline void init() {
             vis[t][r] = false;
         }
     }
+    for (int t = 0; t < T; ++t) {
+        for (int k = 0; k < K; ++k) {
+            rest[t][k] = R;
+        }
+    }
 }
 inline bool add(int j) {
     const int n = belong[j];
-    double tbs = ::tbs[j] / 192.0, sum = 0;
+    double tbs = ::tbs[j] / 192.0;
     std::vector<std::tuple<double, int, int>> candidates; 
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         for (int i = 0; i < R; ++i) {
             const int r = order[t][n][i];
             if (!vis[t][r]) {
-                sum += sinr_sum[t][n][r];
                 candidates.emplace_back(-sinr_sum[t][n][r], t, r);
                 break;
             }
         }
     }
-    if (sum > tbs) {
-        std::sort(candidates.begin(), candidates.end());
+    std::sort(candidates.begin(), candidates.end());
+    for (double v = 1; v <= 4 + 1e-5; v += 1) {
+        double sum = 0;
         for (auto [val, t, r] : candidates) {
-            vis[t][r] = true;
             for (int k = 0; k < K; ++k) {
-                power[t][k][r][n] = 1;
+                power[t][k][r][n] = std::min(v - 1, rest[t][k]);
+                sum += std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
             }
-            tbs += val;
-            if (tbs < 0) {
+        }
+        int last = -1;
+        for (auto [val, t, r] : candidates) {
+            for (int k = 0; k < K; ++k) {
+                sum -= std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
+                power[t][k][r][n] = std::min(v, rest[t][k]);
+                sum += std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
+            }
+            vis[t][r] = true;
+            if (sum > tbs) {
                 break;
             }
         }
-        return true;
+        if (sum > tbs) {
+            for (auto [val, t, r] : candidates) {
+                for (int k = 0; k < K; ++k) {
+                    rest[t][k] -= power[t][k][r][n];
+                }
+            }
+            return true;
+        }
+    }
+    for (auto [val, t, r] : candidates) {
+        vis[t][r] = false;
+        for (int k = 0; k < K; ++k) {
+            power[t][k][r][n] = 0;
+        }
     }
     return false;
 }
