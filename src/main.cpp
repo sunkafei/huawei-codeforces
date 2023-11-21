@@ -77,7 +77,7 @@ inline double read_double() {
 }
 double power[MAXT][MAXK][MAXR][MAXN], answer[MAXT][MAXK][MAXR][MAXN];
 double rest[MAXT][MAXK];
-int vis[MAXT][MAXR];
+int vis[MAXT][MAXR], thickness[MAXT];
 inline void init() {
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
@@ -89,6 +89,7 @@ inline void init() {
         }
     }
     for (int t = 0; t < T; ++t) {
+        thickness[t] = 0;
         for (int r = 0; r < MAXR; ++r) {
             vis[t][r] = false;
         }
@@ -102,12 +103,13 @@ inline void init() {
 inline bool add(int j) {
     const int n = belong[j];
     double tbs = ::tbs[j] / 192.0;
-    std::vector<std::tuple<double, int, int>> candidates; 
+    using item_t = std::tuple<int, double, int, int>;
+    std::vector<item_t> candidates; 
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         for (int i = 0; i < R; ++i) {
             const int r = order[t][n][i];
             if (!vis[t][r]) {
-                candidates.emplace_back(-sinr_sum[t][n][r], t, r);
+                candidates.emplace_back(thickness[t], -sinr_sum[t][n][r], t, r);
                 break;
             }
         }
@@ -115,14 +117,14 @@ inline bool add(int j) {
     std::sort(candidates.begin(), candidates.end());
     for (double v = 1; v <= 4 + 1e-5; v += 1) {
         double sum = 0;
-        for (auto [val, t, r] : candidates) {
+        for (auto [_, val, t, r] : candidates) {
             for (int k = 0; k < K; ++k) {
                 power[t][k][r][n] = std::min(v - 1, rest[t][k]);
                 sum += std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
             }
         }
         int last = -1;
-        for (auto [val, t, r] : candidates) {
+        for (auto [_, val, t, r] : candidates) {
             vis[t][r] = true;
             for (int k = 0; k < K; ++k) {
                 sum -= std::log2(1.0 + power[t][k][r][n] * sinr[t][k][r][n]);
@@ -135,7 +137,10 @@ inline bool add(int j) {
         }
         finish:;
         if (sum > tbs) {
-            for (auto [val, t, r] : candidates) {
+            for (auto [_, val, t, r] : candidates) {
+                if (vis[t][r]) {
+                    thickness[t] += 1;
+                }
                 for (int k = 0; k < K; ++k) {
                     rest[t][k] -= power[t][k][r][n];
                 }
@@ -143,7 +148,7 @@ inline bool add(int j) {
             return true;
         }
     }
-    for (auto [val, t, r] : candidates) {
+    for (auto [_, val, t, r] : candidates) {
         vis[t][r] = false;
         for (int k = 0; k < K; ++k) {
             power[t][k][r][n] = 0;
