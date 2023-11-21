@@ -24,7 +24,7 @@ inline auto mutime() {
 inline auto tle() noexcept {
     auto now = mutime();
     auto runtime = now - start_time;
-    if (runtime > 1200 * 1000) {
+    if (runtime > 1500 * 1000) {
         return true;
     }
     return false;
@@ -229,6 +229,9 @@ void solve() {
         init();
         int cnt = 0;
         for (auto j : indices) {
+            if (tle()) {
+                break;
+            }
             cnt += add(j);
 #ifdef __SMZ_RUNTIME_CHECK
             check();
