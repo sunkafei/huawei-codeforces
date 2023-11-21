@@ -172,7 +172,6 @@ inline bool add(int j) {
                 sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k] * D[k][r][n][m]);
                 cover[t][r] += 1;
                 rest[t][k] -= delta + power[n][t][r][k];
-                goto finish;
                 if (sum > tbs) {
                     goto finish;
                 }
