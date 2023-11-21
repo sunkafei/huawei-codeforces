@@ -157,7 +157,7 @@ void solve() {
         indices.push_back(j);
     }
     std::sort(indices.begin(), indices.end(), [](int x, int y) {
-        return start[x] < start[y];
+        return tbs[x] < tbs[y];
     });
     int best = 0;
     while (!tle()) {
