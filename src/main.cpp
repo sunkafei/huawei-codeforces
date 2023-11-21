@@ -163,7 +163,7 @@ inline bool add(int j) {
                 }
                 auto value = std::log2(1.0 + power[m][t][r][k] * sinr[m][t][r][k]);
                 auto delta = (std::exp2(value) - 1.0) / sinr[m][t][r][k] / D[k][r][n][m] - power[m][t][r][k];
-                if (delta >= rest[t][k]) {
+                if (rest[t][k] - delta <= EPS || power[m][t][r][k] + delta > 4.0) {
                     continue;
                 }
                 backup.emplace_back(m, t, r, k, delta);
@@ -171,7 +171,7 @@ inline bool add(int j) {
                 power[n][t][r][k] = std::min(rest[t][k] - delta, 1.0);
                 sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k] * D[k][r][n][m]);
                 cover[t][r] += 1;
-                rest[t][r] -= delta + power[n][t][r][k];
+                rest[t][k] -= delta + power[n][t][r][k];
                 goto finish;
                 if (sum > tbs) {
                     goto finish;
@@ -186,7 +186,7 @@ inline bool add(int j) {
     }
     for (auto [m, t, r, k, delta] : backup) {
         cover[t][r] -= 1;
-        rest[t][r] += delta + power[n][t][r][k];
+        rest[t][k] += delta + power[n][t][r][k];
         power[m][t][r][k] -= delta;
         power[n][t][r][k] = 0;
     }
@@ -206,6 +206,13 @@ inline void check() {
     for (int t = 0; t < T; ++t) {
         if (thickness[t] < 0) {
             abort();
+        }
+    }
+    for (int t = 0; t < T; ++t) {
+        for (int k = 0; k < K; ++k) {
+            if (rest[t][k] <= -EPS) {
+                abort();
+            }
         }
     }
 }
