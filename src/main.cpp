@@ -6,6 +6,7 @@ constexpr int MAXT = 1000 + 1;
 constexpr int MAXR = 10 + 1;
 constexpr int MAXJ = 5000 + 1;
 constexpr int MAXBUFFER = 1024 * 1024;
+constexpr double EPS = 1e-5;
 int N, K, T, R, J;
 double sinr[MAXN][MAXT][MAXR][MAXK], D[MAXK][MAXR][MAXN][MAXN];
 int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
@@ -132,6 +133,9 @@ inline bool add(int j) {
                 power[n][t][r][k] = std::min(v, rest[t][k]);
                 sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
                 if (sum > tbs) {
+                    double delta = tbs - sum + std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
+                    power[n][t][r][k] = (std::exp2(delta + EPS) - 1) / sinr[n][t][r][k];
+                    sum = tbs + delta;
                     goto finish;
                 }
             }
