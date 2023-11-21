@@ -168,7 +168,7 @@ inline bool add(int j) {
                 }
                 backup.emplace_back(m, t, r, k, delta);
                 power[m][t][r][k] += delta;
-                power[n][t][r][k] = std::min(rest[t][k] - delta, 1.0);
+                power[n][t][r][k] = std::min(rest[t][k] - delta, 4.0 - power[m][t][r][k]);
                 sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k] * D[k][r][n][m]);
                 cover[t][r] += 1;
                 rest[t][k] -= delta + power[n][t][r][k];
