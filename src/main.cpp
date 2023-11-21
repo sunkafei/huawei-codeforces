@@ -149,6 +149,7 @@ inline bool add(int j) {
         }
     }
     if (sum < tbs) {
+        std::vector<std::tuple<double, int, int, int, int>> cells;
         for (int t = start[j]; t < start[j] + length[j]; ++t) {
             for (int r = 0; r < R; ++r) if (cover[t][r] == 1) {
                 int k = position[t][r];
@@ -161,22 +162,26 @@ inline bool add(int j) {
                         break;
                     }
                 }
-                auto value = std::log2(1.0 + power[m][t][r][k] * sinr[m][t][r][k]);
-                auto delta = (std::exp2(value) - 1.0) / sinr[m][t][r][k] / D[k][r][n][m] - power[m][t][r][k];
-                if (rest[t][k] - delta <= EPS || power[m][t][r][k] + delta > 4.0) {
-                    continue;
-                }
-                backup.emplace_back(m, t, r, k, delta);
-                power[m][t][r][k] += delta;
-                power[n][t][r][k] = std::min(rest[t][k] - delta, 4.0 - power[m][t][r][k]);
-                sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k] * D[k][r][n][m]);
-                cover[t][r] += 1;
-                rest[t][k] -= delta + power[n][t][r][k];
-                if (sum > tbs) {
-                    goto finish;
-                }
-                break; //todo
+                cells.emplace_back(-sinr[n][t][r][k] * D[k][r][n][m], t, r, k, m);
             }
+        }
+        std::sort(cells.begin(), cells.end());
+        for (auto [_, t, r, k, m] : cells) {
+            auto value = std::log2(1.0 + power[m][t][r][k] * sinr[m][t][r][k]);
+            auto delta = (std::exp2(value) - 1.0) / sinr[m][t][r][k] / D[k][r][n][m] - power[m][t][r][k];
+            if (rest[t][k] - delta <= EPS || power[m][t][r][k] + delta > 4.0) {
+                continue;
+            }
+            backup.emplace_back(m, t, r, k, delta);
+            power[m][t][r][k] += delta;
+            power[n][t][r][k] = std::min(rest[t][k] - delta, 4.0 - power[m][t][r][k]);
+            sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k] * D[k][r][n][m]);
+            cover[t][r] += 1;
+            rest[t][k] -= delta + power[n][t][r][k];
+            if (sum > tbs) {
+                goto finish;
+            }
+            break; //todo
         }
     }
     finish:;
