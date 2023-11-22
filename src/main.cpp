@@ -80,6 +80,7 @@ double power[MAXN][MAXT][MAXR][MAXK], answer[MAXN][MAXT][MAXR][MAXK];
 double rest[MAXT][MAXK];
 int cover[MAXT][MAXR], thickness[MAXT], position[MAXT][MAXR];
 long long visit[MAXT][MAXK], timestamp = 1;
+double change[MAXN];
 inline void init() {
     for (int n = 0; n < N; ++n) {
         for (int t = 0; t < T; ++t) {
@@ -150,40 +151,62 @@ inline bool add(int j, int limit=4) {
         }
     }
     if (sum < tbs) {
-        std::vector<std::tuple<double, int, int, int, int>> cells;
+        std::vector<std::tuple<double, int, int, int>> cells;
         for (int t = start[j]; t < start[j] + length[j]; ++t) {
             for (int r = 0; r < R; ++r) if (cover[t][r] == 1) {
                 int k = position[t][r];
                 if (power[n][t][r][k] > 0 || visit[t][k] == timestamp) {
                     continue;
                 }
-                int m = 0;
-                for (; m < N; ++m) {
+                double value = -sinr[n][t][r][k];
+                for (int m = 0; m < N; ++m) {
                     if (power[m][t][r][k] > 0) {
-                        break;
+                        value *= D[k][r][n][m];
                     }
                 }
-                cells.emplace_back(-sinr[n][t][r][k] * D[k][r][n][m], t, r, k, m);
+                cells.emplace_back(value, t, r, k);
             }
         }
         std::sort(cells.begin(), cells.end());
         int counter = 0;
-        for (auto [_, t, r, k, m] : cells) {
+        for (auto [_, t, r, k] : cells) {
             if (visit[t][k] == timestamp) {
                 continue;
             }
             visit[t][k] = timestamp;
-            auto value = std::log2(1.0 + power[m][t][r][k] * sinr[m][t][r][k]);
-            auto delta = (std::exp2(value) - 1.0) / sinr[m][t][r][k] / D[k][r][n][m] - power[m][t][r][k];
-            if (rest[t][k] - delta <= EPS || power[m][t][r][k] + delta > 4.0) {
+            std::vector<int> users;
+            for (int m = 0; m < N; ++m) {
+                if (power[m][t][r][k] > 0) {
+                    users.push_back(m);
+                }
+            }
+            double tot = 0, pw = 0;
+            for (auto m : users) {
+                auto cof = sinr[m][t][r][k];
+                for (auto u : users) {
+                    if (u != m) {
+                        cof *= D[k][r][m][u];
+                    }
+                }
+                auto value = std::log2(1.0 + power[m][t][r][k] * cof);
+                auto delta = (std::exp2(value) - 1.0) / cof / D[k][r][n][m] - power[m][t][r][k];
+                change[m] = delta;
+                tot += delta;
+                pw += power[m][t][r][k] + delta;
+            }
+            if (rest[t][k] - tot <= EPS || pw > 4.0) {
                 continue;
             }
-            backup.emplace_back(m, t, r, k, delta);
-            power[m][t][r][k] += delta;
-            power[n][t][r][k] = std::min(rest[t][k] - delta, 4.0 - power[m][t][r][k]);
-            sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k] * D[k][r][n][m]);
-            cover[t][r] += 1;
-            rest[t][k] -= delta + power[n][t][r][k];
+            auto cof = sinr[n][t][r][k];
+            for (auto m : users) {
+                backup.emplace_back(m, t, r, k, change[m]);//todo
+                power[m][t][r][k] += change[m];
+                cof *= D[k][r][n][m];
+            }
+            auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
+            power[n][t][r][k] = std::min({rest[t][k] - tot, 4.0 - pw, need});
+            sum += std::log2(1.0 + power[n][t][r][k] * cof);
+            rest[t][k] -= tot + power[n][t][r][k];
             if (sum > tbs) {
                 goto finish;
             }
@@ -197,7 +220,6 @@ inline bool add(int j, int limit=4) {
         return true;
     }
     for (auto [m, t, r, k, delta] : backup) {
-        cover[t][r] -= 1;
         rest[t][k] += delta + power[n][t][r][k];
         power[m][t][r][k] -= delta;
         power[n][t][r][k] = 0;
