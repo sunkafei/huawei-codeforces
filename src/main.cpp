@@ -139,9 +139,11 @@ inline bool add(int j, int limit=4) {
                     visit[t][k] = timestamp;
                 }
                 if (sum > tbs) {
-                    double delta = tbs - sum + std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
-                    power[n][t][r][k] = std::min(power[n][t][r][k], (std::exp2(delta) - 1) / sinr[n][t][r][k] + EPS);
-                    sum = tbs + delta;
+                    double newval = tbs - sum + std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
+                    double delta = (std::exp2(newval) - 1) / sinr[n][t][r][k] + EPS - power[n][t][r][k];
+                    delta = std::min(delta, 0.0);
+                    power[n][t][r][k] += delta;
+                    rest[t][k] -= delta;
                     goto finish;
                 }
             }
@@ -213,6 +215,7 @@ inline bool add(int j, int limit=4) {
     return false;
 }
 inline void check() {
+#ifdef __SMZ_NATIVE
     for (int t = 0; t < T; ++t) {
         if (thickness[t] < 0) {
             abort();
@@ -231,9 +234,9 @@ inline void check() {
             for (int r = 0; r < R; ++r) {
                 double total = 0;
                 for (int n = 0; n < N; ++n) {
-                    sum += answer[n][t][r][k];
-                    total += answer[n][t][r][k];
-                    if (answer[n][t][r][k] < 0) {
+                    sum += power[n][t][r][k];
+                    total += power[n][t][r][k];
+                    if (power[n][t][r][k] < 0) {
                         abort();
                     }
                 }
@@ -244,8 +247,13 @@ inline void check() {
             if (sum > R) {
                 abort();
             }
+            if (fabs(rest[t][k] - (R - sum)) > 1e-2) {
+                printf("[rest] %f %f\n", rest[t][k], R - sum);
+                abort();
+            }
         }
     }
+#endif
 }
 void solve() {
     std::mt19937 engine;
@@ -293,7 +301,6 @@ void solve() {
     }
 #ifdef __SMZ_NATIVE
     printf("%d\n", best);
-    check();
 #else
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
