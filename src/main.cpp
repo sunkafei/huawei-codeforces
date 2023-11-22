@@ -188,16 +188,7 @@ inline bool add(int j, int limit=4) {
         }
     }
     finish:;
-    double total = 0;
-    for (auto [m, t, r, k, delta] : backup) {
-        total += delta + power[n][t][r][k];
-    }
-    for (auto [_, val, t, r] : candidates) {
-        for (int k = 0; k < K; ++k) {
-            total += power[n][t][r][k];
-        }
-    }
-    if (sum > tbs) { // && total <= limit
+    if (sum > tbs) {
         return true;
     }
     for (auto [m, t, r, k, delta] : backup) {
