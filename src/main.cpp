@@ -247,7 +247,7 @@ inline void check() {
             if (sum > R) {
                 abort();
             }
-            if (fabs(rest[t][k] - (R - sum)) > 1e-2) {
+            if (fabs(rest[t][k] - (R - sum)) > 1e-5) {
                 printf("[rest] %f %f\n", rest[t][k], R - sum);
                 abort();
             }
