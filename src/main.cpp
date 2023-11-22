@@ -165,6 +165,7 @@ inline bool add(int j, int limit=4) {
             }
         }
         std::sort(cells.begin(), cells.end());
+        int counter = 0;
         for (auto [_, t, r, k, m] : cells) {
             if (visit[t][k] == timestamp) {
                 continue;
@@ -184,7 +185,9 @@ inline bool add(int j, int limit=4) {
             if (sum > tbs) {
                 goto finish;
             }
-            break; //todo
+            if (++counter >= limit) {
+                break;
+            }
         }
     }
     finish:;
