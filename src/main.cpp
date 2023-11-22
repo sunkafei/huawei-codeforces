@@ -1,4 +1,3 @@
-#define __SMZ_RUNTIME_CHECK
 #include <bits/stdc++.h>
 #include <sys/time.h>
 constexpr int MAXN = 100 + 1;
@@ -103,7 +102,7 @@ inline void init() {
         }
     }
 }
-inline bool add(int j) {
+inline bool add(int j, int limit=4) {
     timestamp += 1;
     const int n = belong[j];
     double tbs = ::tbs[j] / 192.0;
@@ -121,7 +120,7 @@ inline bool add(int j) {
     std::sort(candidates.begin(), candidates.end());
     double sum = 0;
     std::vector<std::tuple<int, int, int, int, double>> backup;
-    for (int iteration = 0; iteration < 4; ++iteration) {
+    for (int iteration = 0; iteration < limit; ++iteration) {
         for (auto [_, val, t, r] : candidates) {
             if (iteration == 0) {
                 thickness[t] += 1;
@@ -167,6 +166,10 @@ inline bool add(int j) {
         }
         std::sort(cells.begin(), cells.end());
         for (auto [_, t, r, k, m] : cells) {
+            if (visit[t][k] == timestamp) {
+                continue;
+            }
+            visit[t][k] = timestamp;
             auto value = std::log2(1.0 + power[m][t][r][k] * sinr[m][t][r][k]);
             auto delta = (std::exp2(value) - 1.0) / sinr[m][t][r][k] / D[k][r][n][m] - power[m][t][r][k];
             if (rest[t][k] - delta <= EPS || power[m][t][r][k] + delta > 4.0) {
@@ -185,7 +188,16 @@ inline bool add(int j) {
         }
     }
     finish:;
-    if (sum > tbs) {
+    double total = 0;
+    for (auto [m, t, r, k, delta] : backup) {
+        total += delta + power[n][t][r][k];
+    }
+    for (auto [_, val, t, r] : candidates) {
+        for (int k = 0; k < K; ++k) {
+            total += power[n][t][r][k];
+        }
+    }
+    if (sum > tbs) { // && total <= limit
         return true;
     }
     for (auto [m, t, r, k, delta] : backup) {
@@ -219,6 +231,27 @@ inline void check() {
             }
         }
     }
+    for (int t = 0; t < T; ++t) {
+        for (int k = 0; k < K; ++k) {
+            double sum = 0;
+            for (int r = 0; r < R; ++r) {
+                double total = 0;
+                for (int n = 0; n < N; ++n) {
+                    sum += answer[n][t][r][k];
+                    total += answer[n][t][r][k];
+                    if (answer[n][t][r][k] < 0) {
+                        abort();
+                    }
+                }
+                if (total > 4) {
+                    abort();
+                }
+            }
+            if (sum > R) {
+                abort();
+            }
+        }
+    }
 }
 void solve() {
     std::mt19937 engine;
@@ -233,15 +266,23 @@ void solve() {
     while (!tle()) {
         init();
         int cnt = 0;
-        for (auto j : indices) {
-            if (tle()) {
-                break;
-            }
-            cnt += add(j);
-#ifdef __SMZ_RUNTIME_CHECK
-            check();
+        bool processed[MAXJ] = {};
+        for (int limit = 1; limit < 4; limit += 1) {
+            for (auto j : indices) {
+                if (processed[j]) {
+                    continue;
+                }
+                if (tle()) {
+                    goto finish;
+                }
+                processed[j] = add(j, limit);
+                cnt += processed[j];
+#ifdef __SMZ_NATIVE
+                check();
 #endif
+            }
         }
+        finish:;
         if (cnt > best) {
             best = cnt;
             for (int n = 0; n < N; ++n) {
@@ -258,22 +299,7 @@ void solve() {
     }
 #ifdef __SMZ_NATIVE
     printf("%d\n", best);
-    for (int t = 0; t < T; ++t) {
-        for (int k = 0; k < K; ++k) {
-            double sum = 0;
-            for (int r = 0; r < R; ++r) {
-                for (int n = 0; n < N; ++n) {
-                    sum += answer[n][t][r][k];
-                    if (answer[n][t][r][k] > 4 || answer[n][t][r][k] < 0) {
-                        abort();
-                    }
-                }
-            }
-            if (sum > R) {
-                abort();
-            }
-        }
-    }
+    check();
 #else
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
