@@ -6,7 +6,8 @@ constexpr int MAXT = 1000 + 1;
 constexpr int MAXR = 10 + 1;
 constexpr int MAXJ = 5000 + 1;
 constexpr int MAXBUFFER = 1024 * 1024;
-constexpr double EPS = 1e-6;
+constexpr double EPS = 2e-6;
+constexpr double four = 4.0 - 1e-9;
 int N, K, T, R, J;
 double sinr[MAXN][MAXT][MAXR][MAXK], D[MAXK][MAXR][MAXN][MAXN];
 int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
@@ -204,7 +205,7 @@ inline bool add(int j, int limit=4) {
                 cof *= D[k][r][n][m];
             }
             auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
-            power[n][t][r][k] = std::min({rest[t][k] - tot, 4.0 - pw, need});
+            power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need});
             sum += std::log2(1.0 + power[n][t][r][k] * cof);
             rest[t][k] -= tot + power[n][t][r][k];
             if (sum > tbs) {
@@ -262,7 +263,7 @@ inline void check() {
                         abort();
                     }
                 }
-                if (total > 4) {
+                if (total > 4.0) {
                     abort();
                 }
             }
