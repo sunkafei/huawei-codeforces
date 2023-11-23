@@ -83,11 +83,17 @@ int cover[MAXT][MAXR], thickness[MAXT], position[MAXT][MAXR];
 long long visit[MAXT][MAXK], timestamp = 1;
 double change[MAXN];
 inline double calculate_answer(int n, int t, int r, int k) {
-    double value = sinr[n][t][r][k] * answer[n][t][r][k];
-    for (int m = 0; m < N; ++m) if (answer[m][t][r][k] > 0) {
-        value *= D[k][r][n][m];
+    double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
+    double denominator = 1;
+    for (int m = 0; m < N; ++m) if (m != n && answer[m][t][r][k] > 0) {
+        numerator *= D[k][r][n][m];
     }
-    return std::log2(1.0 + value);
+    for (int x = 0; x < K; ++x) if (x != k) {
+        for (int m = 0; m < N; ++m) if (m != n && answer[m][t][r][x] > 0) {
+            denominator += sinr[n][t][r][x] * answer[m][t][r][x] / D[x][r][n][m];
+        }
+    }
+    return std::log2(1.0 + numerator / denominator);
 }
 inline void check_answer(int best) {
     for (int j = 0; j < J; ++j) {
