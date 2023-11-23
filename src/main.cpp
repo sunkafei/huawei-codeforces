@@ -175,7 +175,7 @@ int cover[MAXT][MAXR], thickness[MAXT];
 long long visit[MAXT][MAXK], timestamp = 1;
 double change[MAXN];
 dynamic_array<std::pair<int, int>, MAXK * MAXN> cache[MAXT][MAXR];
-inline double calculate_answer(int n, int t, int r, int k) {
+inline double calculate_weight(int n, int t, int r, int k) {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
     for (int m = 0; m < N; ++m) if (m != n && answer[m][t][r][k] > 0) {
@@ -186,19 +186,22 @@ inline double calculate_answer(int n, int t, int r, int k) {
             denominator += sinr[n][t][r][x] * answer[m][t][r][x] / D[x][r][n][m];
         }
     }
-    return std::log2(1.0 + numerator / denominator);
+    return numerator / denominator;
 }
 inline void check_answer(int best) {
     for (int j = 0; j < J; ++j) {
         const int n = belong[j];
         double sum = 0;
         for (int t = start[j]; t < start[j] + length[j]; ++t) {
-            for (int r = 0; r < R; ++r) {
-                for (int k = 0; k < K; ++k) {
+            for (int k = 0; k < K; ++k) {
+                double prod = 1.0, cnt = 0.0;
+                for (int r = 0; r < R; ++r) {
                     if (answer[n][t][r][k] > 0) {
-                        sum += calculate_answer(n, t, r, k);
+                        prod *= calculate_weight(n, t, r, k);
+                        cnt += 1.0;
                     }
                 }
+                sum += cnt * std::log2(1.0 + std::pow(prod, 1.0 / cnt));
             }
         }
         if (sum > 1e-9) {
