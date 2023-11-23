@@ -174,6 +174,7 @@ double rest[MAXT][MAXK];
 int cover[MAXT][MAXR], thickness[MAXT], position[MAXT][MAXR];
 long long visit[MAXT][MAXK], timestamp = 1;
 double change[MAXN];
+dynamic_array<std::pair<int, int>, MAXK * MAXN> cache[MAXT][MAXR];
 inline double calculate_answer(int n, int t, int r, int k) {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
@@ -235,6 +236,11 @@ inline void init() {
             rest[t][k] = R - EPS;
         }
     }
+    for (int t = 0; t < T; ++t) {
+        for (int r = 0; r < R; ++r) {
+            cache[t][r].clear();
+        }
+    }
 }
 inline bool add(int j, int limit=4) {
     static dynamic_array<std::tuple<int, double, int, int>, MAXT> candidates; candidates.clear();
@@ -270,6 +276,7 @@ inline bool add(int j, int limit=4) {
                     cover[t][r] += 1;
                     position[t][r] = k;
                     visit[t][k] = timestamp;
+                    cache[t][r].push_back(std::make_pair(k, n));
                 }
                 if (sum > tbs) {
                     double newval = tbs - sum + std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
@@ -291,7 +298,7 @@ inline bool add(int j, int limit=4) {
                     continue;
                 }
                 double value = -sinr[n][t][r][k];
-                for (int m = 0; m < N; ++m) {
+                for (auto [_, m] : cache[t][r]) {
                     if (power[m][t][r][k] > 0) {
                         value *= D[k][r][n][m];
                     }
@@ -307,7 +314,7 @@ inline bool add(int j, int limit=4) {
             }
             visit[t][k] = timestamp;
             std::vector<int> users;
-            for (int m = 0; m < N; ++m) {
+            for (auto [_, m] : cache[t][r]) {
                 if (power[m][t][r][k] > 0) {
                     users.push_back(m);
                 }
@@ -335,6 +342,7 @@ inline bool add(int j, int limit=4) {
                 power[m][t][r][k] += change[m];
                 cof *= D[k][r][n][m];
             }
+            cache[t][r].push_back(std::make_pair(k, n));
             auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
             power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need});
             sum += std::log2(1.0 + power[n][t][r][k] * cof);
@@ -354,6 +362,9 @@ inline bool add(int j, int limit=4) {
     for (auto [m, t, r, k, delta] : backup) {
         rest[t][k] += delta + power[n][t][r][k];
         power[m][t][r][k] -= delta;
+        if (power[n][t][r][k] > 0) {
+            cache[t][r].pop_back();
+        }
         power[n][t][r][k] = 0;
     }
     for (auto [_, val, t, r] : candidates) {
@@ -363,6 +374,7 @@ inline bool add(int j, int limit=4) {
                 cover[t][r] -= 1;
                 rest[t][k] += power[n][t][r][k];
                 power[n][t][r][k] = 0;
+                cache[t][r].pop_back();
             }
         }
     }
@@ -382,6 +394,7 @@ inline void check() {
             }
         }
     }
+    int counter = 0;
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
             double sum = 0;
@@ -392,6 +405,9 @@ inline void check() {
                     total += power[n][t][r][k];
                     if (power[n][t][r][k] < 0) {
                         abort();
+                    }
+                    if (power[n][t][r][k] > 0) {
+                        counter += 1;
                     }
                 }
                 if (total > 4.0) {
@@ -406,6 +422,19 @@ inline void check() {
                 abort();
             }
         }
+    }
+    for (int t = 0; t < T; ++t) {
+        for (int r = 0; r < R; ++r) {
+            for (auto [k, n] : cache[t][r]) {
+                counter -= 1;
+                if (power[n][t][r][k] == 0) {
+                    abort();
+                }
+            }
+        }
+    }
+    if (counter != 0) {
+        abort();
     }
 #endif
 }
