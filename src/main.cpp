@@ -16,6 +16,98 @@ const char *pointer = buffer + MAXBUFFER;
 double sinr_sum[MAXN][MAXT][MAXR];
 int order[MAXN][MAXT][MAXR], order2[MAXN][MAXT][MAXR][MAXK];
 uint64_t start_time;
+template<typename T, int maxsize> class dynamic_array {
+public:
+    T data[maxsize];
+    int sz;
+public:
+    dynamic_array() : sz(0) {}
+    dynamic_array(const dynamic_array<T, maxsize> &rhs) noexcept : sz(rhs.sz) {
+        copy(rhs.begin(), rhs.begin() + sz, data);
+    }
+    dynamic_array<T, maxsize> &operator= (const dynamic_array<T, maxsize> &rhs) noexcept {
+        sz = rhs.sz;
+        copy(rhs.begin(), rhs.begin() + sz, data);
+        return *this;
+    }
+    void push_back(T val) noexcept {
+#ifdef __SMZ_NATIVE
+        assert(sz < maxsize);
+#endif
+        data[sz++] = move(val);
+    }
+    void expand() noexcept {
+#ifdef __SMZ_NATIVE
+        assert(sz < maxsize);
+#endif
+        sz += 1;
+    }
+    void erase(T val) noexcept {
+        for (int i = 0; i < sz; ++i) {
+            if (data[i] == val) {
+                data[i] = move(data[sz - 1]);
+                sz -= 1;
+                return;
+            }
+        }
+    }
+    void replace(T old_val, T new_val) noexcept {
+        for (int i = 0; i < sz; ++i) {
+            if (data[i] == old_val) {
+                data[i] = new_val;
+                return;
+            }
+        }
+    }
+    void set(T val) noexcept {
+        data[0] = val;
+        sz = 1;
+    }
+    bool contains(T val) const noexcept {
+        for (int i = 0; i < sz; ++i) {
+            if (data[i] == val) {
+                return true;
+            }
+        }
+        return false;
+    }
+    void pop_back() {
+#ifdef __SMZ_NATIVE
+        assert(sz > 0);
+#endif
+        sz -= 1;
+    }
+    void clear() noexcept {
+        sz = 0;
+    }
+    auto size() const noexcept {
+        return sz;
+    }
+    bool empty() const noexcept {
+        return sz == 0;
+    }
+    auto &front() noexcept {
+        return data[0];
+    }
+    auto &back() noexcept {
+        return data[sz - 1];
+    }
+    auto &operator[] (int index) noexcept {
+        return data[index];
+    }
+    auto *begin() noexcept {
+        return data;
+    }
+    auto *end() noexcept {
+        return data + sz;
+    }
+    const auto *begin() const noexcept {
+        return data;
+    }
+    const auto *end() const noexcept {
+        return data + sz;
+    }
+};
 inline auto mutime() {
     timeval v;
     gettimeofday(&v, nullptr);
@@ -145,16 +237,15 @@ inline void init() {
     }
 }
 inline bool add(int j, int limit=4) {
+    static dynamic_array<std::tuple<int, double, int, int>, MAXT> candidates; candidates.clear();
     timestamp += 1;
     const int n = belong[j];
     double tbs = ::tbs[j] / 192.0;
-    using item_t = std::tuple<int, double, int, int>;
-    std::vector<item_t> candidates; 
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         for (int i = 0; i < R; ++i) {
             const int r = order[n][t][i];
             if (!cover[t][r]) {
-                candidates.emplace_back(thickness[t], -sinr_sum[n][t][r], t, r);
+                candidates.push_back(std::make_tuple(thickness[t], -sinr_sum[n][t][r], t, r));
                 break;
             }
         }
@@ -240,7 +331,7 @@ inline bool add(int j, int limit=4) {
             }
             auto cof = sinr[n][t][r][k];
             for (auto m : users) {
-                backup.emplace_back(m, t, r, k, change[m]);//todo
+                backup.emplace_back(m, t, r, k, change[m]);
                 power[m][t][r][k] += change[m];
                 cof *= D[k][r][n][m];
             }
