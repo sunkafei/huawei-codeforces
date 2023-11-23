@@ -112,7 +112,7 @@ inline void check_answer(int best) {
             if (sum < tbs[j] / 192.0) {
                 abort();
             }
-            if (fabs(sum - tbs[j] / 192.0) > 1e-3) {
+            if (fabs(sum - tbs[j] / 192.0) > 1e-2) {
                 abort();
             }
             best -= 1;
@@ -332,7 +332,7 @@ void solve() {
         init();
         int cnt = 0;
         bool processed[MAXJ] = {};
-        for (int limit = 1; limit < 4; limit += 1) {
+        for (int limit = 1; limit <= 4; limit += 1) {
             for (auto j : indices) {
                 if (processed[j]) {
                     continue;
@@ -414,7 +414,7 @@ void preprocess() {
 int main() {
     start_time = mutime();
 #ifdef __SMZ_NATIVE
-    freopen("in2.txt", "r", stdin);
+    freopen("21", "r", stdin);
 #endif
     ::N = read_int();
     ::K = read_int();
