@@ -82,6 +82,40 @@ double rest[MAXT][MAXK];
 int cover[MAXT][MAXR], thickness[MAXT], position[MAXT][MAXR];
 long long visit[MAXT][MAXK], timestamp = 1;
 double change[MAXN];
+inline double calculate_answer(int n, int t, int r, int k) {
+    double value = sinr[n][t][r][k] * answer[n][t][r][k];
+    for (int m = 0; m < N; ++m) if (answer[m][t][r][k] > 0) {
+        value *= D[k][r][n][m];
+    }
+    return std::log2(1.0 + value);
+}
+inline void check_answer(int best) {
+    for (int j = 0; j < J; ++j) {
+        const int n = belong[j];
+        double sum = 0;
+        for (int t = start[j]; t < start[j] + length[j]; ++t) {
+            for (int r = 0; r < R; ++r) {
+                for (int k = 0; k < K; ++k) {
+                    if (answer[n][t][r][k] > 0) {
+                        sum += calculate_answer(n, t, r, k);
+                    }
+                }
+            }
+        }
+        if (sum > 1e-9) {
+            if (sum < tbs[j] / 192.0) {
+                abort();
+            }
+            if (fabs(sum - tbs[j] / 192.0) > 1e-3) {
+                abort();
+            }
+            best -= 1;
+        }
+    }
+    if (best != 0) {
+        abort();
+    }
+}
 inline void init() {
     for (int n = 0; n < N; ++n) {
         for (int t = 0; t < T; ++t) {
@@ -324,6 +358,7 @@ void solve() {
     }
 #ifdef __SMZ_NATIVE
     printf("%d\n", best);
+    check_answer(best);
 #else
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
