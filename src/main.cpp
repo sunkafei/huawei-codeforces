@@ -310,16 +310,10 @@ inline bool add(int j, int limit=4) {
                 continue;
             }
             visit[t][k] = timestamp;
-            std::vector<int> users;
-            for (auto [_, m] : cache[t][r]) {
-                if (power[m][t][r][k] > 0) {
-                    users.push_back(m);
-                }
-            }
             double tot = 0, pw = 0;
-            for (auto m : users) {
+            for (auto [x, m] : cache[t][r]) {
                 auto cof = sinr[m][t][r][k];
-                for (auto u : users) {
+                for (auto [y, u] : cache[t][r]) {
                     if (u != m) {
                         cof *= D[k][r][m][u];
                     }
@@ -334,7 +328,7 @@ inline bool add(int j, int limit=4) {
                 continue;
             }
             auto cof = sinr[n][t][r][k];
-            for (auto m : users) {
+            for (auto [x, m] : cache[t][r]) {
                 backup.emplace_back(m, t, r, k, change[m]);
                 power[m][t][r][k] += change[m];
                 cof *= D[k][r][n][m];
