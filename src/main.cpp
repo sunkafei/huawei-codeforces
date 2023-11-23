@@ -244,6 +244,7 @@ inline void init() {
 }
 inline bool add(int j, int limit=4) {
     static dynamic_array<std::tuple<int, double, int, int>, MAXT> candidates; candidates.clear();
+    static dynamic_array<std::tuple<double, int, int, int>, MAXT * MAXR> cells; cells.clear();
     timestamp += 1;
     const int n = belong[j];
     double tbs = ::tbs[j] / 192.0;
@@ -289,7 +290,6 @@ inline bool add(int j, int limit=4) {
         }
     }
     if (sum < tbs) {
-        std::vector<std::tuple<double, int, int, int>> cells;
         for (int t = start[j]; t < start[j] + length[j]; ++t) {
             for (int r = 0; r < R; ++r) if (cover[t][r] == 1) {
                 int k = cache[t][r].front().first;
@@ -302,7 +302,7 @@ inline bool add(int j, int limit=4) {
                         value *= D[k][r][n][m];
                     }
                 }
-                cells.emplace_back(value, t, r, k);
+                cells.push_back(std::make_tuple(value, t, r, k));
             }
         }
         std::sort(cells.begin(), cells.end());
