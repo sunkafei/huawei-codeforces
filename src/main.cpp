@@ -171,7 +171,7 @@ inline double read_double() {
 }
 double power[MAXN][MAXT][MAXR][MAXK], answer[MAXN][MAXT][MAXR][MAXK];
 double rest[MAXT][MAXK];
-int cover[MAXT][MAXR], thickness[MAXT], position[MAXT][MAXR];
+int cover[MAXT][MAXR], thickness[MAXT];
 long long visit[MAXT][MAXK], timestamp = 1;
 double change[MAXN];
 dynamic_array<std::pair<int, int>, MAXK * MAXN> cache[MAXT][MAXR];
@@ -274,7 +274,6 @@ inline bool add(int j, int limit=4) {
                 sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
                 if (prev == 0 && power[n][t][r][k] > 0) {
                     cover[t][r] += 1;
-                    position[t][r] = k;
                     visit[t][k] = timestamp;
                     cache[t][r].push_back(std::make_pair(k, n));
                 }
@@ -293,7 +292,7 @@ inline bool add(int j, int limit=4) {
         std::vector<std::tuple<double, int, int, int>> cells;
         for (int t = start[j]; t < start[j] + length[j]; ++t) {
             for (int r = 0; r < R; ++r) if (cover[t][r] == 1) {
-                int k = position[t][r];
+                int k = cache[t][r].front().first;
                 if (power[n][t][r][k] > 0 || visit[t][k] == timestamp) {
                     continue;
                 }
