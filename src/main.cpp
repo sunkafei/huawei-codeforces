@@ -298,9 +298,7 @@ inline bool add(int j, int limit=4) {
                 }
                 double value = -sinr[n][t][r][k];
                 for (auto [_, m] : cache[t][r]) {
-                    if (power[m][t][r][k] > 0) {
-                        value *= D[k][r][n][m];
-                    }
+                    value *= D[k][r][n][m];
                 }
                 cells.push_back(std::make_tuple(value, t, r, k));
             }
