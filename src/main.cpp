@@ -172,7 +172,7 @@ inline double read_double() {
 double power[MAXN][MAXT][MAXR][MAXK], answer[MAXN][MAXT][MAXR][MAXK];
 double rest[MAXT][MAXK];
 double product[MAXT][MAXK];
-int cover[MAXT][MAXR], thickness[MAXT], disable[MAXT][MAXR];
+int cover[MAXT][MAXR], thickness[MAXT], disable[MAXT][MAXR], size[MAXT][MAXK];
 long long visit[MAXT][MAXK], timestamp = 1;
 double change[MAXN];
 dynamic_array<std::pair<int, int>, MAXK * MAXN> cache[MAXT][MAXR];
@@ -276,6 +276,7 @@ inline bool add(int j, int limit=4) {
         if (RBG[t].size() == 1) {
             for (int k = 0; k < K; ++k) {
                 product[t][k] = 1.0;
+                size[t][k] = 0;
             }
         }
         for (int i = 0; i < K; ++i) {
@@ -286,6 +287,7 @@ inline bool add(int j, int limit=4) {
                     power[n][t][r][k] += delta;
                     rest[t][k] -= delta;
                     product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
+                    size[t][k] += 1;
                     sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
                     cover[t][r] += 1;
                     visit[t][k] = timestamp;
@@ -301,13 +303,19 @@ inline bool add(int j, int limit=4) {
                 }
                 continue;
             }
-            double value = std::pow(product[t][k], 1.0 / (RBG[t].size() - 1));
-            sum -= std::log2(1.0 + value) * (RBG[t].size() - 1);
-            power[n][t][r][k] = std::min(rest[t][k], 1.0);
-            rest[t][k] -= power[n][t][r][k];
-            product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
-            value = std::pow(product[t][k], 1.0 / RBG[t].size());
-            sum += std::log2(1.0 + value) * RBG[t].size();
+            double old_inner = std::pow(product[t][k], 1.0 / size[t][k]);
+            double old_val = std::log2(1.0 + old_inner) * size[t][k];
+            double distribute = std::min(rest[t][k], 1.0);
+            double new_inner = std::pow(product[t][k] * sinr[n][t][r][k] * distribute, 1.0 / (size[t][k] + 1));
+            double new_val = std::log2(1.0 + new_inner) * (size[t][k] + 1);
+            if (new_val > old_val) {
+                sum -= old_val;
+                sum += new_val;
+                power[n][t][r][k] = distribute;
+                rest[t][k] -= power[n][t][r][k];
+                product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
+                size[t][k] += 1;
+            }
             if (power[n][t][r][k] > 0) {
                 cover[t][r] += 1;
                 visit[t][k] = timestamp;
@@ -318,12 +326,12 @@ inline bool add(int j, int limit=4) {
             }
             if (sum > tbs) {
                 if (sum > tbs + EPS) {
-                    double newval = tbs + EPS - sum + std::log2(1.0 + value) * RBG[t].size();
-                    double pw = std::pow(std::exp2(newval / RBG[t].size()) - 1.0, RBG[t].size());
+                    double newval = tbs + EPS - sum + new_val;
+                    double pw = std::pow(std::exp2(newval / size[t][k]) - 1.0, size[t][k]);
                     for (auto s : RBG[t]) {
                         pw /= sinr[n][t][s][k];
                     }
-                    pw = std::pow(pw, 1.0 / RBG[t].size());
+                    pw = std::pow(pw, 1.0 / size[t][k]);
                     for (auto s : RBG[t]) {
                         rest[t][k] += power[n][t][s][k] - pw;
                         power[n][t][s][k] = pw;
@@ -570,7 +578,7 @@ void preprocess() {
 int main() {
     start_time = mutime();
 #ifdef __SMZ_NATIVE
-    freopen("06", "r", stdin);
+    freopen("21", "r", stdin);
 #endif
     ::N = read_int();
     ::K = read_int();
