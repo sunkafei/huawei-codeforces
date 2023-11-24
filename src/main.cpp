@@ -290,11 +290,11 @@ inline bool add(int j, int limit=4) {
                 return sinr[x] > sinr[y];
         });
         for (auto k : indices) {
+            double distribute = std::min(rest[t][k], 1.0);
             if (RBG[t].size() == 1) {
-                double delta = std::min(rest[t][k], 1.0);
-                if (delta > 0) {
-                    power[n][t][r][k] += delta;
-                    rest[t][k] -= delta;
+                if (distribute > 0) {
+                    power[n][t][r][k] += distribute;
+                    rest[t][k] -= distribute;
                     product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
                     size[t][k] += 1;
                     sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
@@ -314,7 +314,6 @@ inline bool add(int j, int limit=4) {
             }
             double old_inner = std::pow(product[t][k], 1.0 / size[t][k]);
             double old_val = std::log2(1.0 + old_inner) * size[t][k];
-            double distribute = std::min(rest[t][k], 1.0);
             double new_inner = std::pow(product[t][k] * sinr[n][t][r][k] * distribute, 1.0 / (size[t][k] + 1));
             double new_val = std::log2(1.0 + new_inner) * (size[t][k] + 1);
             if (new_val > old_val) {
