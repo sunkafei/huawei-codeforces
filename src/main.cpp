@@ -14,7 +14,7 @@ int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
 char buffer[MAXBUFFER * 2];
 const char *pointer = buffer + MAXBUFFER;
 double sinr_sum[MAXN][MAXT][MAXR];
-int order[MAXN][MAXT][MAXR], order2[MAXN][MAXT][MAXR][MAXK];
+int order[MAXN][MAXT][MAXR];
 uint64_t start_time;
 template<typename T, int maxsize> class dynamic_array {
 public:
@@ -279,8 +279,17 @@ inline bool add(int j, int limit=4) {
                 size[t][k] = 0;
             }
         }
+        dynamic_array<int, MAXK> indices;
         for (int i = 0; i < K; ++i) {
-            int k = order2[n][t][r][i];
+            indices.push_back(i);
+        }
+        std::sort(indices.begin(), indices.end(), [rest=::rest[t], sinr=::sinr[n][t][r]](int x, int y) {
+            if (rest[x] != rest[y])
+                return rest[x] > rest[y];
+            else
+                return sinr[x] > sinr[y];
+        });
+        for (auto k : indices) {
             if (RBG[t].size() == 1) {
                 double delta = std::min(rest[t][k], 1.0);
                 if (delta > 0) {
@@ -560,18 +569,6 @@ void preprocess() {
             std::sort(order[n][t], order[n][t] + R, [val=sinr_sum[n][t]](int x, int y) {
                 return val[x] > val[y];
             });
-        }
-    }
-    for (int n = 0; n < N; ++n) {
-        for (int t = 0; t < T; ++t) {
-            for (int r = 0; r < R; ++r) {
-                for (int k = 0; k < K; ++k) {
-                    order2[n][t][r][k] = k;
-                }
-                std::sort(order2[n][t][r], order2[n][t][r] + K, [val=sinr[n][t][r]](int x, int y) {
-                    return val[x] > val[y];
-                });
-            }
         }
     }
 }
