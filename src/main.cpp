@@ -247,7 +247,7 @@ inline void init() {
         }
     }
 }
-inline bool add(int j, int limit=4) {
+inline bool add(int j, int limit) {
     static dynamic_array<std::tuple<int, double, int, int>, MAXT> candidates; candidates.clear();
     static dynamic_array<std::tuple<double, int, int, int>, MAXT * MAXR> cells; cells.clear();
     static dynamic_array<int, MAXR> RBG[MAXT];
@@ -291,6 +291,9 @@ inline bool add(int j, int limit=4) {
         });
         for (auto k : indices) {
             double distribute = std::min(rest[t][k], 1.0);
+            if (thickness[t] == R && limit == R) {
+                distribute = std::min(rest[t][k], 4.0);
+            }
             if (RBG[t].size() == 1) {
                 if (distribute > 0) {
                     power[n][t][r][k] += distribute;
