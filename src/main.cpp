@@ -236,7 +236,7 @@ inline void init() {
     }
     for (int t = 0; t < T; ++t) {
         thickness[t] = 0;
-        for (int r = 0; r < MAXR; ++r) {
+        for (int r = 0; r < R; ++r) {
             disable[t][r] = false;
         }
     }
