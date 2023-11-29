@@ -265,9 +265,20 @@ inline bool add(int j, int limit) {
             const int r = order[n][t][i];
             if (cache[t][r].size() == 0) {
                 candidates.push_back(std::make_tuple(thickness[t], -sinr_sum[n][t][r], t, r));
-                if (++counter >= limit) {
-                    break;
+            }
+            else if (!disable[t][r]) {
+                const int k = position[t][r];
+                double value = -sinr[n][t][r][k];
+                for (auto m : cache[t][r]) {
+                    value *= D[k][r][n][m];
                 }
+                candidates.push_back(std::make_tuple(thickness[t], value, t, r));
+            }
+            else {
+                continue;
+            }
+            if (++counter >= limit) {
+                break;
             }
         }
     }
@@ -275,107 +286,98 @@ inline bool add(int j, int limit) {
     double sum = 0;
     std::vector<std::tuple<int, int, int, int, double>> backup;
     for (auto [_, val, t, r] : candidates) {
-        thickness[t] += 1;
-        RBG[t].push_back(r);
-        if (RBG[t].size() == 1) {
-            for (int k = 0; k < K; ++k) {
-                product[t][k] = 1.0;
-                size[t][k] = 0;
-            }
-        }
-        dynamic_array<int, MAXK> indices;
-        for (int i = 0; i < K; ++i) {
-            indices.push_back(i);
-        }
-        std::sort(indices.begin(), indices.end(), [rest=::rest[t], sinr=::sinr[n][t][r]](int x, int y) {
-            if (rest[x] != rest[y])
-                return rest[x] > rest[y];
-            else
-                return sinr[x] > sinr[y];
-        });
-        for (auto k : indices) {
-            double distribute = std::min(rest[t][k], 1.0);
-            if (thickness[t] == R && limit == R) {
-                distribute = std::min(rest[t][k], 4.0);
-            }
+        if (cache[t][r].empty()) {
+            RBG[t].push_back(r);
             if (RBG[t].size() == 1) {
-                if (distribute > 0) {
-                    power[n][t][r][k] += distribute;
-                    rest[t][k] -= distribute;
-                    product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
-                    size[t][k] += 1;
-                    sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
-                    visit[t][k] = timestamp;
-                    cache[t][r].push_back(n);
-                    position[t][r] = k;
-                    if (cache[t][r].size() >= 2) {
-                        disable[t][r] = true;
-                    }
-                    if (sum > tbs) {
-                        double newval = tbs - sum + std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
-                        double delta = (std::exp2(newval) - 1) / sinr[n][t][r][k] + EPS - power[n][t][r][k];
-                        delta = std::min(delta, 0.0);
-                        power[n][t][r][k] += delta;
-                        rest[t][k] -= delta;
-                        goto finish;
-                    }
-                }
-                continue;
-            }
-            double old_inner = std::pow(product[t][k], 1.0 / size[t][k]);
-            double old_val = std::log2(1.0 + old_inner) * size[t][k];
-            double new_inner = std::pow(product[t][k] * sinr[n][t][r][k] * distribute, 1.0 / (size[t][k] + 1));
-            double new_val = std::log2(1.0 + new_inner) * (size[t][k] + 1);
-            if (new_val > old_val) {
-                sum -= old_val;
-                sum += new_val;
-                power[n][t][r][k] = distribute;
-                rest[t][k] -= power[n][t][r][k];
-                product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
-                size[t][k] += 1;
-            }
-            if (power[n][t][r][k] > 0) {
-                visit[t][k] = timestamp;
-                cache[t][r].push_back(n);
-                for (auto s : RBG[t]) {
-                    disable[t][s] = true;
+                for (int k = 0; k < K; ++k) {
+                    product[t][k] = 1.0;
+                    size[t][k] = 0;
                 }
             }
-            if (sum > tbs) {
-                if (sum > tbs + EPS) {
-                    double newval = tbs + EPS - sum + new_val;
-                    double pw = std::pow(std::exp2(newval / size[t][k]) - 1.0, size[t][k]);
-                    for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
-                        pw /= sinr[n][t][s][k];
-                    }
-                    pw = std::pow(pw, 1.0 / size[t][k]);
-                    for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
-                        rest[t][k] += power[n][t][s][k] - pw;
-                        power[n][t][s][k] = pw;
-                    }
-                }
-                goto finish;
+            dynamic_array<int, MAXK> indices;
+            for (int k = 0; k < K; ++k) if (rest[t][k] > 0 && visit[t][k] != -timestamp) {
+                indices.push_back(k);
             }
-        }
-    }
-    if (sum < tbs) {
-        for (int t = start[j]; t < start[j] + length[j]; ++t) {
-            for (int r = 0; r < R; ++r) if (!disable[t][r] && cache[t][r].size() > 0) {
-                int k = position[t][r];
-                if (power[n][t][r][k] > 0 || visit[t][k] == timestamp) {
+            std::sort(indices.begin(), indices.end(), [rest=::rest[t], sinr=::sinr[n][t][r]](int x, int y) {
+                if (rest[x] != rest[y])
+                    return rest[x] > rest[y];
+                else
+                    return sinr[x] > sinr[y];
+            });
+            for (auto k : indices) {
+                double distribute = std::min(rest[t][k], 1.0);
+                if (thickness[t] == R && limit == R) {
+                    distribute = std::min(rest[t][k], 4.0);
+                }
+                if (RBG[t].size() == 1) {
+                    if (distribute > 0) {
+                        power[n][t][r][k] += distribute;
+                        rest[t][k] -= distribute;
+                        product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
+                        size[t][k] += 1;
+                        sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
+                        visit[t][k] = timestamp;
+                        cache[t][r].push_back(n);
+                        position[t][r] = k;
+                        if (cache[t][r].size() == 1) {
+                            thickness[t] += 1;
+                        }
+                        if (cache[t][r].size() >= 2) {
+                            disable[t][r] = true;
+                        }
+                        if (sum > tbs) {
+                            double newval = tbs - sum + std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
+                            double delta = (std::exp2(newval) - 1) / sinr[n][t][r][k] + EPS - power[n][t][r][k];
+                            delta = std::min(delta, 0.0);
+                            power[n][t][r][k] += delta;
+                            rest[t][k] -= delta;
+                            goto finish;
+                        }
+                    }
                     continue;
                 }
-                double value = -sinr[n][t][r][k];
-                for (auto m : cache[t][r]) {
-                    value *= D[k][r][n][m];
+                double old_inner = std::pow(product[t][k], 1.0 / size[t][k]);
+                double old_val = std::log2(1.0 + old_inner) * size[t][k];
+                double new_inner = std::pow(product[t][k] * sinr[n][t][r][k] * distribute, 1.0 / (size[t][k] + 1));
+                double new_val = std::log2(1.0 + new_inner) * (size[t][k] + 1);
+                if (new_val > old_val) {
+                    sum -= old_val;
+                    sum += new_val;
+                    power[n][t][r][k] = distribute;
+                    rest[t][k] -= power[n][t][r][k];
+                    product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
+                    size[t][k] += 1;
                 }
-                cells.push_back(std::make_tuple(value, t, r, k));
+                if (power[n][t][r][k] > 0) {
+                    visit[t][k] = timestamp;
+                    cache[t][r].push_back(n);
+                    if (cache[t][r].size() == 1) {
+                        thickness[t] += 1;
+                    }
+                    for (auto s : RBG[t]) {
+                        disable[t][s] = true;
+                    }
+                }
+                if (sum > tbs) {
+                    if (sum > tbs + EPS) {
+                        double newval = tbs + EPS - sum + new_val;
+                        double pw = std::pow(std::exp2(newval / size[t][k]) - 1.0, size[t][k]);
+                        for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
+                            pw /= sinr[n][t][s][k];
+                        }
+                        pw = std::pow(pw, 1.0 / size[t][k]);
+                        for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
+                            rest[t][k] += power[n][t][s][k] - pw;
+                            power[n][t][s][k] = pw;
+                        }
+                    }
+                    goto finish;
+                }
             }
         }
-        std::sort(cells.begin(), cells.end());
-        int counter = 0;
-        for (auto [_, t, r, k] : cells) {
-            if (visit[t][k] == timestamp) {
+        else {
+            const int k = position[t][r];
+            if (visit[t][k] == timestamp || visit[t][k] == -timestamp) {
                 continue;
             }
             double tot = 0, pw = 0;
@@ -394,7 +396,7 @@ inline bool add(int j, int limit) {
             if (rest[t][k] - tot <= EPS || pw > 4.0) {
                 continue;
             }
-            visit[t][k] = timestamp;
+            visit[t][k] = -timestamp;
             auto cof = sinr[n][t][r][k];
             for (auto m : cache[t][r]) {
                 backup.emplace_back(m, t, r, k, change[m]);
@@ -408,9 +410,6 @@ inline bool add(int j, int limit) {
             rest[t][k] -= tot + power[n][t][r][k];
             if (sum > tbs) {
                 goto finish;
-            }
-            if (++counter >= limit) {
-                break;
             }
         }
     }
@@ -427,13 +426,15 @@ inline bool add(int j, int limit) {
         power[n][t][r][k] = 0;
     }
     for (auto [_, val, t, r] : candidates) {
-        thickness[t] -= 1;
         disable[t][r] = false;
         for (int k = 0; k < K; ++k) {
             if (power[n][t][r][k] > 0) {
                 rest[t][k] += power[n][t][r][k];
                 power[n][t][r][k] = 0;
                 cache[t][r].pop_back();
+                if (cache[t][r].empty()) {
+                    thickness[t] -= 1;
+                }
             }
         }
     }
