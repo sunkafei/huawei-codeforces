@@ -304,9 +304,10 @@ inline bool add(int j, int limit) {
                 else
                     return sinr[x] > sinr[y];
             });
+            int modify = 0;
             for (auto k : indices) {
                 double distribute = std::min(rest[t][k], 1.0);
-                if (thickness[t] == R && limit == R) {
+                if (thickness[t] + modify == R - 1 && limit == R) {
                     distribute = std::min(rest[t][k], 4.0);
                 }
                 if (RBG[t].size() == 1) {
@@ -321,6 +322,7 @@ inline bool add(int j, int limit) {
                         position[t][r] = k;
                         if (cache[t][r].size() == 1) {
                             thickness[t] += 1;
+                            modify -= 1;
                         }
                         if (cache[t][r].size() >= 2) {
                             disable[t][r] = true;
@@ -353,6 +355,7 @@ inline bool add(int j, int limit) {
                     cache[t][r].push_back(n);
                     if (cache[t][r].size() == 1) {
                         thickness[t] += 1;
+                        modify -= 1;
                     }
                     for (auto s : RBG[t]) {
                         disable[t][s] = true;
