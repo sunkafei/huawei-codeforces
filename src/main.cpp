@@ -1,3 +1,5 @@
+//distribute并不一定比single优秀，undo可能失败
+//k == 1 bad
 #include <bits/stdc++.h>
 #include <sys/time.h>
 constexpr int MAXN = 100 + 1;
@@ -14,7 +16,7 @@ int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
 char buffer[MAXBUFFER * 2];
 const char *pointer = buffer + MAXBUFFER;
 double sinr_sum[MAXN][MAXT][MAXR];
-int order[MAXN][MAXT][MAXR];
+int order[MAXN][MAXT][MAXR], query[MAXT][MAXN];
 uint64_t start_time;
 template<typename T, int maxsize> class dynamic_array {
 public:
@@ -45,7 +47,7 @@ public:
     void erase(T val) noexcept {
         for (int i = 0; i < sz; ++i) {
             if (data[i] == val) {
-                data[i] = move(data[sz - 1]);
+                data[i] = std::move(data[sz - 1]);
                 sz -= 1;
                 return;
             }
@@ -116,7 +118,7 @@ inline auto mutime() {
 inline auto tle() noexcept {
     auto now = mutime();
     auto runtime = now - start_time;
-    if (runtime > 1500 * 1000) {
+    if (runtime > 1700 * 1000) {
         return true;
     }
     return false;
@@ -172,11 +174,11 @@ inline double read_double() {
 double power[MAXN][MAXT][MAXR][MAXK], answer[MAXN][MAXT][MAXR][MAXK];
 double rest[MAXT][MAXK];
 double product[MAXT][MAXK];
-int cover[MAXT][MAXR], thickness[MAXT], disable[MAXT][MAXR], size[MAXT][MAXK];
+int thickness[MAXT], disable[MAXT][MAXR], size[MAXT][MAXK], position[MAXT][MAXR];
 long long visit[MAXT][MAXK], timestamp = 1;
 double change[MAXN];
-dynamic_array<std::pair<int, int>, MAXK * MAXN> cache[MAXT][MAXR];
-inline double calculate_weight(int n, int t, int r, int k) {
+dynamic_array<int, MAXN> cache[MAXT][MAXR];
+inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][MAXT][MAXR][MAXK]) {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
     for (int m = 0; m < N; ++m) if (m != n && answer[m][t][r][k] > 0) {
@@ -185,11 +187,13 @@ inline double calculate_weight(int n, int t, int r, int k) {
     for (int x = 0; x < K; ++x) if (x != k) {
         for (int m = 0; m < N; ++m) if (m != n && answer[m][t][r][x] > 0) {
             denominator += sinr[n][t][r][x] * answer[m][t][r][x] / D[x][r][n][m];
+            abort();
         }
     }
     return numerator / denominator;
 }
-inline void check_answer(int best) {
+inline void check_answer(int best, double (&answer)[MAXN][MAXT][MAXR][MAXK]=answer) {
+#ifdef __SMZ_NATIVE
     for (int j = 0; j < J; ++j) {
         const int n = belong[j];
         double sum = 0;
@@ -198,7 +202,7 @@ inline void check_answer(int best) {
                 double prod = 1.0, cnt = 0.0;
                 for (int r = 0; r < R; ++r) {
                     if (answer[n][t][r][k] > 0) {
-                        prod *= calculate_weight(n, t, r, k);
+                        prod *= calculate_weight(n, t, r, k, answer);
                         cnt += 1.0;
                     }
                 }
@@ -218,6 +222,7 @@ inline void check_answer(int best) {
     if (best != 0) {
         abort();
     }
+#endif
 }
 inline void init() {
     for (int n = 0; n < N; ++n) {
@@ -232,7 +237,6 @@ inline void init() {
     for (int t = 0; t < T; ++t) {
         thickness[t] = 0;
         for (int r = 0; r < MAXR; ++r) {
-            cover[t][r] = 0;
             disable[t][r] = false;
         }
     }
@@ -259,7 +263,7 @@ inline bool add(int j, int limit) {
         int counter = 0;
         for (int i = 0; i < R; ++i) {
             const int r = order[n][t][i];
-            if (!cover[t][r]) {
+            if (cache[t][r].size() == 0) {
                 candidates.push_back(std::make_tuple(thickness[t], -sinr_sum[n][t][r], t, r));
                 if (++counter >= limit) {
                     break;
@@ -301,9 +305,12 @@ inline bool add(int j, int limit) {
                     product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
                     size[t][k] += 1;
                     sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
-                    cover[t][r] += 1;
                     visit[t][k] = timestamp;
-                    cache[t][r].push_back(std::make_pair(k, n));
+                    cache[t][r].push_back(n);
+                    position[t][r] = k;
+                    if (cache[t][r].size() >= 2) {
+                        disable[t][r] = true;
+                    }
                     if (sum > tbs) {
                         double newval = tbs - sum + std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
                         double delta = (std::exp2(newval) - 1) / sinr[n][t][r][k] + EPS - power[n][t][r][k];
@@ -328,9 +335,8 @@ inline bool add(int j, int limit) {
                 size[t][k] += 1;
             }
             if (power[n][t][r][k] > 0) {
-                cover[t][r] += 1;
                 visit[t][k] = timestamp;
-                cache[t][r].push_back(std::make_pair(k, n));
+                cache[t][r].push_back(n);
                 for (auto s : RBG[t]) {
                     disable[t][s] = true;
                 }
@@ -339,11 +345,11 @@ inline bool add(int j, int limit) {
                 if (sum > tbs + EPS) {
                     double newval = tbs + EPS - sum + new_val;
                     double pw = std::pow(std::exp2(newval / size[t][k]) - 1.0, size[t][k]);
-                    for (auto s : RBG[t]) {
+                    for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
                         pw /= sinr[n][t][s][k];
                     }
                     pw = std::pow(pw, 1.0 / size[t][k]);
-                    for (auto s : RBG[t]) {
+                    for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
                         rest[t][k] += power[n][t][s][k] - pw;
                         power[n][t][s][k] = pw;
                     }
@@ -354,13 +360,13 @@ inline bool add(int j, int limit) {
     }
     if (sum < tbs) {
         for (int t = start[j]; t < start[j] + length[j]; ++t) {
-            for (int r = 0; r < R; ++r) if (cover[t][r] == 1 && !disable[t][r]) {
-                int k = cache[t][r].front().first;
+            for (int r = 0; r < R; ++r) if (!disable[t][r] && cache[t][r].size() > 0) {
+                int k = position[t][r];
                 if (power[n][t][r][k] > 0 || visit[t][k] == timestamp) {
                     continue;
                 }
                 double value = -sinr[n][t][r][k];
-                for (auto [_, m] : cache[t][r]) {
+                for (auto m : cache[t][r]) {
                     value *= D[k][r][n][m];
                 }
                 cells.push_back(std::make_tuple(value, t, r, k));
@@ -372,17 +378,15 @@ inline bool add(int j, int limit) {
             if (visit[t][k] == timestamp) {
                 continue;
             }
-            visit[t][k] = timestamp;
             double tot = 0, pw = 0;
-            for (auto [x, m] : cache[t][r]) {
+            for (auto m : cache[t][r]) {
                 auto cof = sinr[m][t][r][k];
-                for (auto [y, u] : cache[t][r]) {
+                for (auto u : cache[t][r]) {
                     if (u != m) {
                         cof *= D[k][r][m][u];
                     }
                 }
-                auto value = std::log2(1.0 + power[m][t][r][k] * cof);
-                auto delta = (std::exp2(value) - 1.0) / cof / D[k][r][n][m] - power[m][t][r][k];
+                auto delta = power[m][t][r][k] / D[k][r][n][m] - power[m][t][r][k];
                 change[m] = delta;
                 tot += delta;
                 pw += power[m][t][r][k] + delta;
@@ -390,13 +394,14 @@ inline bool add(int j, int limit) {
             if (rest[t][k] - tot <= EPS || pw > 4.0) {
                 continue;
             }
+            visit[t][k] = timestamp;
             auto cof = sinr[n][t][r][k];
-            for (auto [x, m] : cache[t][r]) {
+            for (auto m : cache[t][r]) {
                 backup.emplace_back(m, t, r, k, change[m]);
                 power[m][t][r][k] += change[m];
                 cof *= D[k][r][n][m];
             }
-            cache[t][r].push_back(std::make_pair(k, n));
+            cache[t][r].push_back(n);
             auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
             power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need});
             sum += std::log2(1.0 + power[n][t][r][k] * cof);
@@ -426,7 +431,6 @@ inline bool add(int j, int limit) {
         disable[t][r] = false;
         for (int k = 0; k < K; ++k) {
             if (power[n][t][r][k] > 0) {
-                cover[t][r] -= 1;
                 rest[t][k] += power[n][t][r][k];
                 power[n][t][r][k] = 0;
                 cache[t][r].pop_back();
@@ -435,10 +439,97 @@ inline bool add(int j, int limit) {
     }
     return false;
 }
-inline void check() {
+inline void undo(int j) {
+    const int n = belong[j];
+    for (int t = start[j]; t < start[j] + length[j]; ++t) {
+        for (int r = 0; r < R; ++r) {
+            for (int k = 0; k < K; ++k) {
+                if (power[n][t][r][k] > 0) {
+                    rest[t][k] += power[n][t][r][k];
+                    power[n][t][r][k] = 0;
+                    cache[t][r].erase(n);
+                    if (k == position[t][r] && !disable[t][r]) {
+                        for (auto m : cache[t][r]) {
+                            auto cof = sinr[m][t][r][k];
+                            for (auto u : cache[t][r]) {
+                                if (u != m) {
+                                    cof *= D[k][r][m][u];
+                                }
+                            }
+                            auto aim = power[m][t][r][k] * D[k][r][n][m];
+                            rest[t][k] += power[m][t][r][k] - aim;
+                            power[m][t][r][k] = aim;
+                        }
+                    }
+                    if (cache[t][r].empty()) {
+                        thickness[t] -= 1;
+                    }
+                    if (disable[t][r]) {
+                        disable[t][r] = false;
+                    }
+                }
+            }
+        }
+    }
+}
+inline void resume() {
+    init();
+    for (int t = 0; t < T; ++t) {
+        for (int r = 0; r < R; ++r) {
+            int sum = 0;
+            for (int k = 0; k < K; ++k) {
+                bool vis = false;
+                for (int n = 0; n < N; ++n) {
+                    power[n][t][r][k] = answer[n][t][r][k];
+                    if (power[n][t][r][k] > 0) {
+                        rest[t][k] -= power[n][t][r][k];
+                        cache[t][r].push_back(n);
+                        position[t][r] = k;
+                        vis = true;
+                    }
+                }
+                sum += vis;
+            }
+            if (sum >= 2) {
+                disable[t][r] = true;
+            }
+        }
+    }
+    for (int t = 0; t < T; ++t) {
+        for (int n = 0; n < N; ++n) {
+            for (int k = 0; k < K; ++k) {
+                dynamic_array<int, MAXR> row;
+                for (int r = 0; r < R; ++r) {
+                    if (power[n][t][r][k] > 0) {
+                        row.push_back(r);
+                    }
+                }
+                if (row.size() >= 2) {
+                    for (auto r : row) {
+                        disable[t][r] = true;
+                    }
+                }
+            }
+        }
+    }
+    for (int t = 0; t < T; ++t) {
+        for (int r = 0; r < R; ++r) {
+            if (cache[t][r].size()) {
+                thickness[t] += 1;
+            }
+        }
+    }
+}
+inline void check(int best) {
 #ifdef __SMZ_NATIVE
     for (int t = 0; t < T; ++t) {
-        if (thickness[t] < 0) {
+        int sum = 0;
+        for (int r = 0; r < R; ++r) {
+            if (cache[t][r].size()) {
+                sum += 1;
+            }
+        }
+        if (thickness[t] != sum) {
             abort();
         }
     }
@@ -449,7 +540,6 @@ inline void check() {
             }
         }
     }
-    int counter = 0;
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
             double sum = 0;
@@ -460,9 +550,6 @@ inline void check() {
                     total += power[n][t][r][k];
                     if (power[n][t][r][k] < 0) {
                         abort();
-                    }
-                    if (power[n][t][r][k] > 0) {
-                        counter += 1;
                     }
                 }
                 if (total > 4.0) {
@@ -480,17 +567,54 @@ inline void check() {
     }
     for (int t = 0; t < T; ++t) {
         for (int r = 0; r < R; ++r) {
-            for (auto [k, n] : cache[t][r]) {
-                counter -= 1;
+            int vis[MAXK] = {};
+            for (int k = 0; k < K; ++k) {
+                for (int n = 0; n < N; ++n) {
+                    if (power[n][t][r][k] > 0) {
+                        vis[k] = true;
+                    }
+                }
+            }
+            if (std::accumulate(vis, vis + K, 0) >= 2) {
+                if (!disable[t][r]) {
+                    abort();
+                }
+            }
+        }
+    }
+    for (int t = 0; t < T; ++t) {
+        for (int n = 0; n < N; ++n) {
+            for (int k = 0; k < K; ++k) {
+                dynamic_array<int, MAXR> row;
+                for (int r = 0; r < R; ++r) {
+                    if (power[n][t][r][k] > 0) {
+                        row.push_back(r);
+                    }
+                }
+                if (row.size() >= 2) {
+                    for (auto r : row) {
+                        if (!disable[t][r]) {
+                            abort();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for (int t = 0; t < T; ++t) {
+        for (int r = 0; r < R; ++r) {
+            if (disable[t][r]) {
+                continue;
+            }
+            int k = position[t][r];
+            for (auto n : cache[t][r]) {
                 if (power[n][t][r][k] == 0) {
                     abort();
                 }
             }
         }
     }
-    if (counter != 0) {
-        abort();
-    }
+    check_answer(best, power);
 #endif
 }
 void solve() {
@@ -500,14 +624,76 @@ void solve() {
         indices.push_back(j);
     }
     std::sort(indices.begin(), indices.end(), [](int x, int y) {
-        return tbs[x] > tbs[y];
+        return tbs[x] < tbs[y];
     });
-    int best = 0;
+    int best = 0, cnt = 0;
+    init();
+    bool processed[MAXJ] = {};
+    for (int limit = 1; limit <= R; limit += 1) {
+        for (auto j : indices) {
+            if (processed[j]) {
+                continue;
+            }
+            if (tle()) {
+                goto next;
+            }
+            processed[j] = add(j, limit);
+            cnt += processed[j];
+#ifdef __SMZ_NATIVE
+            check(cnt);
+#endif
+        }
+    }
+    next: if (cnt > best) {
+        best = cnt;
+        for (int n = 0; n < N; ++n) {
+            for (int t = 0; t < T; ++t) {
+                for (int r = 0; r < R; ++r) {
+                    for (int k = 0; k < K; ++k) {
+                        answer[n][t][r][k] = power[n][t][r][k];
+                    }
+                }
+            }
+        }
+    }
     while (!tle()) {
-        init();
-        int cnt = 0;
-        bool processed[MAXJ] = {};
-        for (int limit = 1; limit <= R; limit += 1) {
+        dynamic_array<int, MAXT> time;
+        for (int i = 0; i < T; ++i) {
+            time.push_back(i);
+        }
+        shuffle(time.begin(), time.end(), engine);
+        for (auto t : time) {
+            resume();
+            cnt = best;
+            for (int j = 0; j < J; ++j) {
+                processed[j] = false;
+                const int n = belong[j];
+                for (int t = start[j]; t < start[j] + length[j]; ++t) {
+                    for (int r = 0; r < R; ++r) {
+                        if (cache[t][r].contains(n)) {
+                            processed[j] = true;
+                            goto bbk;
+                        }
+                    }
+                }
+                bbk:;
+            }
+#ifdef __SMZ_NATIVE
+            check(cnt);
+#endif
+            for (int r = 0; r < R; ++r) {
+                for (int k = 0; k < K; ++k) {
+                    for (auto n : cache[t][r]) {
+                        int j = query[t][n];
+                        if (processed[j]) {
+                            processed[j] = false;
+                            undo(j);
+                            cnt -= 1;
+                        }
+                    }
+                }
+            }
+            shuffle(indices.begin(), indices.end(), engine);
             for (auto j : indices) {
                 if (processed[j]) {
                     continue;
@@ -515,28 +701,27 @@ void solve() {
                 if (tle()) {
                     goto finish;
                 }
-                processed[j] = add(j, limit);
+                processed[j] = add(j, R);
                 cnt += processed[j];
 #ifdef __SMZ_NATIVE
-                check();
+                check(cnt);
 #endif
             }
-        }
-        finish:;
-        if (cnt > best) {
-            best = cnt;
-            for (int n = 0; n < N; ++n) {
-                for (int t = 0; t < T; ++t) {
-                    for (int r = 0; r < R; ++r) {
-                        for (int k = 0; k < K; ++k) {
-                            answer[n][t][r][k] = power[n][t][r][k];
+            if (cnt > best) {
+                best = cnt;
+                for (int n = 0; n < N; ++n) {
+                    for (int t = 0; t < T; ++t) {
+                        for (int r = 0; r < R; ++r) {
+                            for (int k = 0; k < K; ++k) {
+                                answer[n][t][r][k] = power[n][t][r][k];
+                            }
                         }
                     }
                 }
             }
         }
-        std::shuffle(indices.begin(), indices.end(), engine);
     }
+    finish:;
 #ifdef __SMZ_NATIVE
     printf("%d\n", best);
     check_answer(best);
@@ -571,6 +756,12 @@ void preprocess() {
             std::sort(order[n][t], order[n][t] + R, [val=sinr_sum[n][t]](int x, int y) {
                 return val[x] > val[y];
             });
+        }
+    }
+    for (int j = 0; j < J; ++j) {
+        for (int t = start[j]; t < start[j] + length[j]; ++t) {
+            const int n = belong[j];
+            query[t][n] = j;
         }
     }
 }
