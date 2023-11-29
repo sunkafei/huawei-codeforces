@@ -251,7 +251,7 @@ inline void init() {
         }
     }
 }
-inline bool add(int j, int limit) {
+inline bool add(int j) {
     static dynamic_array<std::tuple<int, double, int, int>, MAXT> candidates; candidates.clear();
     static dynamic_array<std::tuple<double, int, int, int>, MAXT * MAXR> cells; cells.clear();
     static dynamic_array<int, MAXR> RBG[MAXT];
@@ -260,7 +260,6 @@ inline bool add(int j, int limit) {
     double tbs = ::tbs[j] / 192.0;
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         RBG[t].clear();
-        int counter = 0;
         for (int i = 0; i < R; ++i) {
             const int r = order[n][t][i];
             if (cache[t][r].size() == 0) {
@@ -276,9 +275,6 @@ inline bool add(int j, int limit) {
             }
             else {
                 continue;
-            }
-            if (++counter >= limit) {
-                break;
             }
         }
     }
@@ -307,7 +303,7 @@ inline bool add(int j, int limit) {
             int modify = 0;
             for (auto k : indices) {
                 double distribute = std::min(rest[t][k], 1.0);
-                if (thickness[t] + modify == R - 1 && limit == R) {
+                if (thickness[t] + modify == R - 1) {
                     distribute = std::min(rest[t][k], 4.0);
                 }
                 if (RBG[t].size() == 1) {
@@ -633,20 +629,18 @@ void solve() {
     int best = 0, cnt = 0;
     init();
     bool processed[MAXJ] = {};
-    for (int limit = 1; limit <= R; limit += 1) {
-        for (auto j : indices) {
-            if (processed[j]) {
-                continue;
-            }
-            if (tle()) {
-                goto next;
-            }
-            processed[j] = add(j, limit);
-            cnt += processed[j];
-#ifdef __SMZ_NATIVE
-            check(cnt);
-#endif
+    for (auto j : indices) {
+        if (processed[j]) {
+            continue;
         }
+        if (tle()) {
+            goto next;
+        }
+        processed[j] = add(j);
+        cnt += processed[j];
+#ifdef __SMZ_NATIVE
+        check(cnt);
+#endif
     }
     next: if (cnt > best) {
         best = cnt;
@@ -705,7 +699,7 @@ void solve() {
                 if (tle()) {
                     goto finish;
                 }
-                processed[j] = add(j, R);
+                processed[j] = add(j);
                 cnt += processed[j];
 #ifdef __SMZ_NATIVE
                 check(cnt);
