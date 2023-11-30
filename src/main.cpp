@@ -692,6 +692,9 @@ void solve() {
         for (auto t : time) {
             resume();
             cnt = best;
+            if (tle()) {
+                goto finish;
+            }
             for (int j = 0; j < J; ++j) {
                 processed[j] = false;
                 const int n = belong[j];
@@ -715,6 +718,9 @@ void solve() {
                         processed[j] = false;
                         undo(j);
                         cnt -= 1;
+                        if (tle()) {
+                            goto finish;
+                        }
                     }
                 }
             }
