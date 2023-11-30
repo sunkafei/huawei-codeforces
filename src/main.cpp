@@ -252,8 +252,7 @@ inline void init() {
     }
 }
 inline double add(int j) {
-    static dynamic_array<std::tuple<int, double, int, int>, MAXT> candidates; candidates.clear();
-    static dynamic_array<std::tuple<double, int, int, int>, MAXT * MAXR> cells; cells.clear();
+    static dynamic_array<std::tuple<double, int, int>, MAXT> candidates; candidates.clear();
     static dynamic_array<int, MAXR> RBG[MAXT];
     double ret = 0;
     timestamp += 1;
@@ -263,7 +262,7 @@ inline double add(int j) {
         RBG[t].clear();
         for (int r = 0; r < R; ++r) {
             if (cache[t][r].size() == 0) {
-                candidates.push_back(std::make_tuple(0, -sinr_sum[n][t][r][0], t, r));
+                candidates.push_back(std::make_tuple(-sinr_sum[n][t][r][0], t, r));
             }
             else if (!disable[t][r]) {
                 const int k = position[t][r];
@@ -271,7 +270,7 @@ inline double add(int j) {
                 for (auto m : cache[t][r]) {
                     value *= D[k][r][n][m];
                 }
-                candidates.push_back(std::make_tuple(0, value, t, r));
+                candidates.push_back(std::make_tuple(value, t, r));
             }
             else {
                 continue;
@@ -281,7 +280,7 @@ inline double add(int j) {
     std::sort(candidates.begin(), candidates.end());
     double sum = 0;
     std::vector<std::tuple<int, int, int, int, double>> backup;
-    for (auto [_, val, t, r] : candidates) {
+    for (auto [val, t, r] : candidates) {
         if (cache[t][r].empty()) {
             RBG[t].push_back(r);
             if (RBG[t].size() == 1) {
@@ -430,7 +429,7 @@ inline double add(int j) {
         }
         power[n][t][r][k] = 0;
     }
-    for (auto [_, val, t, r] : candidates) {
+    for (auto [val, t, r] : candidates) {
         disable[t][r] = false;
         for (int k = 0; k < K; ++k) {
             if (power[n][t][r][k] > 0) {
