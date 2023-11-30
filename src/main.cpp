@@ -15,8 +15,8 @@ double sinr[MAXN][MAXT][MAXR][MAXK], D[MAXK][MAXR][MAXN][MAXN];
 int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
 char buffer[MAXBUFFER * 2];
 const char *pointer = buffer + MAXBUFFER;
-double sinr_sum[MAXN][MAXT][MAXR];
-int order[MAXN][MAXT][MAXR], query[MAXT][MAXN];
+double sinr_sum[MAXN][MAXT][MAXR][4];
+int query[MAXT][MAXN];
 uint64_t start_time;
 template<typename T, int maxsize> class dynamic_array {
 public:
@@ -261,10 +261,9 @@ inline double add(int j) {
     double tbs = ::tbs[j] / 192.0;
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         RBG[t].clear();
-        for (int i = 0; i < R; ++i) {
-            const int r = order[n][t][i];
+        for (int r = 0; r < R; ++r) {
             if (cache[t][r].size() == 0) {
-                candidates.push_back(std::make_tuple(0, -sinr_sum[n][t][r], t, r));
+                candidates.push_back(std::make_tuple(0, -sinr_sum[n][t][r][0], t, r));
             }
             else if (!disable[t][r]) {
                 const int k = position[t][r];
@@ -769,19 +768,15 @@ void preprocess() {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
                 for (int n = 0; n < N; ++n) {
-                    sinr_sum[n][t][r] += std::log2(1.0 + sinr[n][t][r][k]);
+                    double val[5] = {0};
+                    for (int i = 1; i <= 4; ++i) {
+                        val[i] = std::log2(1.0 + i * sinr[n][t][r][k]);
+                    }
+                    for (int i = 0; i < 4; ++i) {
+                        sinr_sum[n][t][r][i] = val[i + 1] - val[i];
+                    }
                 }
             }
-        }
-    }
-    for (int n = 0; n < N; ++n) {
-        for (int t = 0; t < T; ++t) {
-            for (int r = 0; r < R; ++r) {
-                order[n][t][r] = r;
-            }
-            std::sort(order[n][t], order[n][t] + R, [val=sinr_sum[n][t]](int x, int y) {
-                return val[x] > val[y];
-            });
         }
     }
     for (int j = 0; j < J; ++j) {
