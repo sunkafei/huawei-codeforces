@@ -264,7 +264,7 @@ inline double add(int j) {
         for (int i = 0; i < R; ++i) {
             const int r = order[n][t][i];
             if (cache[t][r].size() == 0) {
-                candidates.push_back(std::make_tuple(thickness[t], -sinr_sum[n][t][r], t, r));
+                candidates.push_back(std::make_tuple(0, -sinr_sum[n][t][r], t, r));
             }
             else if (!disable[t][r]) {
                 const int k = position[t][r];
@@ -272,7 +272,7 @@ inline double add(int j) {
                 for (auto m : cache[t][r]) {
                     value *= D[k][r][n][m];
                 }
-                candidates.push_back(std::make_tuple(thickness[t], value, t, r));
+                candidates.push_back(std::make_tuple(0, value, t, r));
             }
             else {
                 continue;
