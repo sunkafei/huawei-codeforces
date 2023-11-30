@@ -721,7 +721,7 @@ void solve() {
             }
             shuffle(indices.begin(), indices.end(), engine);
             for (auto j : indices) {
-                if (processed[j]) {
+                if (processed[j] || start[j] > t || start[j] + length[j] <= t) {
                     continue;
                 }
                 if (tle()) {
