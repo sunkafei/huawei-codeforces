@@ -115,7 +115,7 @@ inline auto mutime() {
     gettimeofday(&v, nullptr);
     return v.tv_usec + v.tv_sec * 1000000;
 }
-inline auto tle(const int limit=1700) noexcept {
+inline auto tle(const int limit=1600) noexcept {
     auto now = mutime();
     auto runtime = now - start_time;
     if (runtime > limit * 1000) {
