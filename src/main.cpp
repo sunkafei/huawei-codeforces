@@ -115,10 +115,10 @@ inline auto mutime() {
     gettimeofday(&v, nullptr);
     return v.tv_usec + v.tv_sec * 1000000;
 }
-inline auto tle() noexcept {
+inline auto tle(const int limit=1700) noexcept {
     auto now = mutime();
     auto runtime = now - start_time;
-    if (runtime > 1700 * 1000) {
+    if (runtime > limit * 1000) {
         return true;
     }
     return false;
@@ -303,6 +303,9 @@ inline double add(int j) {
             int modify = 0;
             for (auto k : indices) {
                 double distribute = std::min(rest[t][k], 1.0);
+                if (distribute <= 0) {
+                    continue;
+                }
                 if (thickness[t] + modify == R - 1) {
                     distribute = std::min(rest[t][k], 4.0);
                 }
@@ -638,7 +641,7 @@ void solve() {
     int best = 0, cnt = 0;
     init();
     bool processed[MAXJ] = {};
-    while (queue.size() && !tle()) {
+    while (queue.size() > 1 && !tle(600)) {
         auto [prev, j] = queue.top(); queue.pop();
         auto val = add(j);
         if (val == 0) {
