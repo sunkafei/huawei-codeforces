@@ -251,10 +251,11 @@ inline void init() {
         }
     }
 }
-inline bool add(int j) {
+inline double add(int j) {
     static dynamic_array<std::tuple<int, double, int, int>, MAXT> candidates; candidates.clear();
     static dynamic_array<std::tuple<double, int, int, int>, MAXT * MAXR> cells; cells.clear();
     static dynamic_array<int, MAXR> RBG[MAXT];
+    double ret = 0;
     timestamp += 1;
     const int n = belong[j];
     double tbs = ::tbs[j] / 192.0;
@@ -309,6 +310,7 @@ inline bool add(int j) {
                 if (RBG[t].size() == 1) {
                     if (distribute > 0) {
                         power[n][t][r][k] += distribute;
+                        ret += 1;
                         rest[t][k] -= distribute;
                         product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
                         size[t][k] += 1;
@@ -342,6 +344,7 @@ inline bool add(int j) {
                     sum -= old_val;
                     sum += new_val;
                     power[n][t][r][k] = distribute;
+                    ret += 1;
                     rest[t][k] -= power[n][t][r][k];
                     product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
                     size[t][k] += 1;
@@ -405,6 +408,7 @@ inline bool add(int j) {
             cache[t][r].push_back(n);
             auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
             power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need});
+            ret += 1;
             sum += std::log2(1.0 + power[n][t][r][k] * cof);
             rest[t][k] -= tot + power[n][t][r][k];
             if (sum > tbs) {
@@ -414,7 +418,7 @@ inline bool add(int j) {
     }
     finish:;
     if (sum > tbs) {
-        return true;
+        return ret;
     }
     for (auto [m, t, r, k, delta] : backup) {
         rest[t][k] += delta + power[n][t][r][k];
@@ -437,7 +441,7 @@ inline bool add(int j) {
             }
         }
     }
-    return false;
+    return 0.0;
 }
 inline void undo(int j) {
     const int n = belong[j];
@@ -618,7 +622,13 @@ inline void check(int best) {
 #endif
 }
 void solve() {
+    using item_t = std::pair<double, int>;
+    std::priority_queue<item_t, std::vector<item_t>, std::greater<item_t>> queue;
     std::mt19937 engine;
+    for (int j = 0; j < J; ++j) {
+        queue.emplace(0.0, j);
+    }
+    queue.emplace(int(1e9), -1);
     std::vector<int> indices;
     for (int j = 0; j < J; ++j) {
         indices.push_back(j);
@@ -629,6 +639,24 @@ void solve() {
     int best = 0, cnt = 0;
     init();
     bool processed[MAXJ] = {};
+    while (queue.size() && !tle()) {
+        auto [prev, j] = queue.top(); queue.pop();
+        auto val = add(j);
+        if (val == 0) {
+            continue;
+        }
+        if (prev == 0 || val > queue.top().first) {
+            undo(j);
+            queue.emplace(val, j);
+        }
+        else {
+            processed[j] = true;
+            cnt += 1;
+#ifdef __SMZ_NATIVE
+            check(cnt);
+#endif
+        }
+    }
     for (auto j : indices) {
         if (processed[j]) {
             continue;
