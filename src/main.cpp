@@ -710,14 +710,12 @@ void solve() {
             check(cnt);
 #endif
             for (int r = 0; r < R; ++r) {
-                for (int k = 0; k < K; ++k) {
-                    for (auto n : cache[t][r]) {
-                        int j = query[t][n];
-                        if (processed[j]) {
-                            processed[j] = false;
-                            undo(j);
-                            cnt -= 1;
-                        }
+                for (auto n : cache[t][r]) {
+                    int j = query[t][n];
+                    if (processed[j]) {
+                        processed[j] = false;
+                        undo(j);
+                        cnt -= 1;
                     }
                 }
             }
