@@ -178,6 +178,8 @@ int thickness[MAXT], disable[MAXT][MAXR], size[MAXT][MAXK], position[MAXT][MAXR]
 long long visit[MAXT][MAXK], timestamp = 1;
 double change[MAXN];
 dynamic_array<int, MAXN> cache[MAXT][MAXR];
+dynamic_array<std::tuple<double, int, int>, MAXT * MAXR * 4> candidates;
+dynamic_array<std::tuple<int, int, int>, MAXT * MAXR * MAXK> changed;
 inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][MAXT][MAXR][MAXK]) {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
@@ -252,12 +254,13 @@ inline void init() {
     }
 }
 inline double add(int j) {
-    static dynamic_array<std::tuple<double, int, int>, MAXT * MAXR * 4> candidates; candidates.clear();
     static dynamic_array<int, MAXR> RBG[MAXT];
+    const int n = belong[j];
+    const double tbs = ::tbs[j] / 192.0;
     double ret = 0;
     timestamp += 1;
-    const int n = belong[j];
-    double tbs = ::tbs[j] / 192.0;
+    candidates.clear();
+    changed.clear();
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         RBG[t].clear();
         for (int r = 0; r < R; ++r) {
@@ -322,6 +325,7 @@ inline double add(int j) {
                         sum += std::log2(1.0 + power[n][t][r][k] * sinr[n][t][r][k]);
                         visit[t][k] = timestamp;
                         cache[t][r].push_back(n);
+                        changed.push_back(std::make_tuple(t, r, k));
                         position[t][r] = k;
                         if (cache[t][r].size() == 1) {
                             thickness[t] += 1;
@@ -357,6 +361,7 @@ inline double add(int j) {
                 if (power[n][t][r][k] > 0) {
                     visit[t][k] = timestamp;
                     cache[t][r].push_back(n);
+                    changed.push_back(std::make_tuple(t, r, k));
                     if (cache[t][r].size() == 1) {
                         thickness[t] += 1;
                         modify -= 1;
@@ -415,6 +420,7 @@ inline double add(int j) {
                     cof *= D[k][r][n][m];
                 }
                 cache[t][r].push_back(n);
+                changed.push_back(std::make_tuple(t, r, k));
                 auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
                 power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need, 1.0});
                 sum += std::log2(1.0 + power[n][t][r][k] * cof);
@@ -447,24 +453,16 @@ inline double add(int j) {
         return ret;
     }
     for (auto [m, t, r, k, delta] : backup) {
-        rest[t][k] += delta + power[n][t][r][k];
+        rest[t][k] += delta;
         power[m][t][r][k] -= delta;
-        if (power[n][t][r][k] > 0) {
-            cache[t][r].pop_back();
-        }
-        power[n][t][r][k] = 0;
     }
-    for (auto [val, t, r] : candidates) {
+    for (auto [t, r, k] : changed) {
         disable[t][r] = false;
-        for (int k = 0; k < K; ++k) {
-            if (power[n][t][r][k] > 0) {
-                rest[t][k] += power[n][t][r][k];
-                power[n][t][r][k] = 0;
-                cache[t][r].pop_back();
-                if (cache[t][r].empty()) {
-                    thickness[t] -= 1;
-                }
-            }
+        rest[t][k] += power[n][t][r][k];
+        power[n][t][r][k] = 0;
+        cache[t][r].pop_back();
+        if (cache[t][r].empty()) {
+            thickness[t] -= 1;
         }
     }
     return 0.0;
