@@ -562,7 +562,7 @@ inline double add(int j) {
                 weight[n][t][r][k] = cof;
                 auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
                 power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need, 1.0});
-                capacity[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, 1.0});
+                capacity[n][t][r][k] = std::min({rest[t][k] - tot, four - pw});
                 sum += std::log2(1.0 + power[n][t][r][k] * cof);
                 rest[t][k] -= tot + power[n][t][r][k];
             }
@@ -578,8 +578,8 @@ inline double add(int j) {
                 sum -= std::log2(1.0 + power[n][t][r][k] * cof);
                 auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
                 double distribute = std::min({rest[t][k], four - pw, need - power[n][t][r][k], 1.0});
-                power[n][t][r][k] += distribute;
-                capacity[n][t][r][k] += std::min({rest[t][k], four - pw, 1.0});
+                power[n][t][r][k] = std::min(power[n][t][r][k] + distribute, capacity[n][t][r][k]);
+                //capacity[n][t][r][k] += std::min({rest[t][k], four - pw, 1.0});
                 sum += std::log2(1.0 + power[n][t][r][k] * cof);
                 rest[t][k] -= distribute;
             }
