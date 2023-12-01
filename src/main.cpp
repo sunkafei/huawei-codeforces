@@ -359,6 +359,11 @@ inline void update(const int n) {
             }
             if (cache[t][r].size() <= 1) {
                 disable[t][r] = false;
+                for (int k = 0; k < K; ++k) {
+                    if (power[n][t][r][k] > 0) {
+                        position[t][r] = k;
+                    }
+                }
             }
         }
     }
@@ -417,7 +422,8 @@ inline double add(int j) {
                     return sinr[x] > sinr[y];
             });
             int modify = 0;
-            for (auto k : indices) {
+            for (int i = 0; i < indices.size(); ++i) {
+                int k = indices[i];
                 if (rest[t][k] <= 0) {
                     continue;
                 }
@@ -452,6 +458,18 @@ inline double add(int j) {
                             delta = std::min(delta, 0.0);
                             power[n][t][r][k] += delta;
                             rest[t][k] -= delta;
+                            if (cache[t][r].size() >= 2) for (int x = i + 1; x < indices.size(); ++x) {
+                                double distribute = std::min(rest[t][indices[x]], 1.0);
+                                if (thickness[t] + modify == R - 1) {
+                                    distribute = std::min(rest[t][indices[x]], 4.0);
+                                }
+                                if (distribute > 0) {
+                                    cache[t][r].push_back(n);
+                                    changed.push_back(std::make_tuple(t, r, indices[x]));
+                                    weight[n][t][r][indices[x]] = sinr[n][t][r][indices[x]];
+                                    capacity[n][t][r][indices[x]] = distribute;
+                                }
+                            }
                             goto finish;
                         }
                     }
@@ -931,7 +949,7 @@ void preprocess() {
 int main() {
     start_time = mutime();
 #ifdef __SMZ_NATIVE
-    freopen("21", "r", stdin);
+    freopen("06", "r", stdin);
 #endif
     ::N = read_int();
     ::K = read_int();
