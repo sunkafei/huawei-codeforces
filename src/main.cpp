@@ -266,11 +266,15 @@ inline double add(int j) {
             }
             else if (!disable[t][r]) {
                 const int k = position[t][r];
-                double value = -sinr[n][t][r][k];
+                double value = sinr[n][t][r][k];
                 for (auto m : cache[t][r]) {
                     value *= D[k][r][n][m];
                 }
-                candidates.push_back(std::make_tuple(value, t, r));
+                const int limit = std::min(std::ceil(rest[t][k]), 4.0);
+                for (int i = 1; i <= limit; ++i) {
+                    auto weight = std::log(1.0 + i * value) - std::log(1.0 + (i - 1) * value);
+                    candidates.push_back(std::make_tuple(-weight, t, r));
+                }
             }
             else {
                 continue;
@@ -301,10 +305,10 @@ inline double add(int j) {
             });
             int modify = 0;
             for (auto k : indices) {
-                double distribute = std::min(rest[t][k], 1.0);
-                if (distribute <= 0) {
+                if (rest[t][k] <= 0) {
                     continue;
                 }
+                double distribute = std::min(rest[t][k], 1.0);
                 if (thickness[t] + modify == R - 1) {
                     distribute = std::min(rest[t][k], 4.0);
                 }
@@ -380,38 +384,59 @@ inline double add(int j) {
         }
         else {
             const int k = position[t][r];
-            if (visit[t][k] == timestamp || visit[t][k] == -timestamp) {
+            if (rest[t][k] <= 0) {
                 continue;
             }
-            double tot = 0, pw = 0;
-            for (auto m : cache[t][r]) {
-                auto cof = sinr[m][t][r][k];
-                for (auto u : cache[t][r]) {
-                    if (u != m) {
-                        cof *= D[k][r][m][u];
-                    }
+            if (power[n][t][r][k] == 0) {
+                if (visit[t][k] == timestamp || visit[t][k] == -timestamp) {
+                    continue;
                 }
-                auto delta = power[m][t][r][k] / D[k][r][n][m] - power[m][t][r][k];
-                change[m] = delta;
-                tot += delta;
-                pw += power[m][t][r][k] + delta;
+                double tot = 0, pw = 0;
+                for (auto m : cache[t][r]) {
+                    auto cof = sinr[m][t][r][k];
+                    for (auto u : cache[t][r]) {
+                        if (u != m) {
+                            cof *= D[k][r][m][u];
+                        }
+                    }
+                    auto delta = power[m][t][r][k] / D[k][r][n][m] - power[m][t][r][k];
+                    change[m] = delta;
+                    tot += delta;
+                    pw += power[m][t][r][k] + delta;
+                }
+                if (rest[t][k] - tot <= EPS || pw > 4.0) {
+                    continue;
+                }
+                visit[t][k] = -timestamp;
+                auto cof = sinr[n][t][r][k];
+                for (auto m : cache[t][r]) {
+                    backup.emplace_back(m, t, r, k, change[m]);
+                    power[m][t][r][k] += change[m];
+                    cof *= D[k][r][n][m];
+                }
+                cache[t][r].push_back(n);
+                auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
+                power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need, 1.0});
+                sum += std::log2(1.0 + power[n][t][r][k] * cof);
+                rest[t][k] -= tot + power[n][t][r][k];
             }
-            if (rest[t][k] - tot <= EPS || pw > 4.0) {
-                continue;
+            else {
+                double pw = 0;
+                auto cof = sinr[n][t][r][k];
+                for (auto m : cache[t][r]) {
+                    if (m != n) {
+                        cof *= D[k][r][n][m];
+                    }
+                    pw += power[m][t][r][k];
+                }
+                sum -= std::log2(1.0 + power[n][t][r][k] * cof);
+                auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
+                double distribute = std::min({rest[t][k], four - pw, need - power[n][t][r][k], 1.0});
+                power[n][t][r][k] += distribute;
+                sum += std::log2(1.0 + power[n][t][r][k] * cof);
+                rest[t][k] -= distribute;
             }
-            visit[t][k] = -timestamp;
-            auto cof = sinr[n][t][r][k];
-            for (auto m : cache[t][r]) {
-                backup.emplace_back(m, t, r, k, change[m]);
-                power[m][t][r][k] += change[m];
-                cof *= D[k][r][n][m];
-            }
-            cache[t][r].push_back(n);
-            auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
-            power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need});
             ret += 1;
-            sum += std::log2(1.0 + power[n][t][r][k] * cof);
-            rest[t][k] -= tot + power[n][t][r][k];
             if (sum > tbs) {
                 goto finish;
             }
