@@ -252,7 +252,7 @@ inline void init() {
     }
 }
 inline double add(int j) {
-    static dynamic_array<std::tuple<double, int, int>, MAXT> candidates; candidates.clear();
+    static dynamic_array<std::tuple<double, int, int>, MAXT * MAXR * 4> candidates; candidates.clear();
     static dynamic_array<int, MAXR> RBG[MAXT];
     double ret = 0;
     timestamp += 1;
