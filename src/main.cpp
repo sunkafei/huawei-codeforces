@@ -298,6 +298,9 @@ inline void update(const int n) {
                 size -= 1;
                 nodes[i].state = -1;
             }
+            else {
+                break;
+            }
         }
         double common = exp2(number / size);
         bool flag = false;
@@ -311,13 +314,15 @@ inline void update(const int n) {
                 nodes[i].state = 1;
                 size -= 1;
                 flag = true;
-                for (int i = 0; i < nodes.size(); ++i) if (nodes[i].state == -1) {
-                    if (number > -nodes[i].log * size) {
-                        number -= nodes[i].log;
-                        size += 1;
-                        nodes[i].state = 0;
-                    }
-                }
+            }
+        }
+        for (int i = 0; i < nodes.size(); ++i) if (nodes[i].state == -1) {
+            if (number > -nodes[i].log * size) {
+                number -= nodes[i].log;
+                size += 1;
+                nodes[i].state = 0;
+            }
+            else {
                 break;
             }
         }
@@ -949,7 +954,7 @@ void preprocess() {
 int main() {
     start_time = mutime();
 #ifdef __SMZ_NATIVE
-    freopen("06", "r", stdin);
+    freopen("21", "r", stdin);
 #endif
     ::N = read_int();
     ::K = read_int();
