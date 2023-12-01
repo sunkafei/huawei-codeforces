@@ -18,6 +18,13 @@ const char *pointer = buffer + MAXBUFFER;
 double sinr_sum[MAXN][MAXT][MAXR];
 int query[MAXT][MAXN];
 uint64_t start_time;
+struct item_t {
+    double raw;
+    double log;
+    double cap;
+    int index;
+    int state;
+};
 template<typename T, int maxsize> class dynamic_array {
 public:
     T data[maxsize];
@@ -175,11 +182,13 @@ double power[MAXN][MAXT][MAXR][MAXK], answer[MAXN][MAXT][MAXR][MAXK];
 double rest[MAXT][MAXK];
 double product[MAXT][MAXK];
 int thickness[MAXT], disable[MAXT][MAXR], size[MAXT][MAXK], position[MAXT][MAXR];
-long long visit[MAXT][MAXK], timestamp = 1;
+long long visit[MAXT][MAXK], lock[MAXT][MAXR][MAXK], timestamp = 1;
 double change[MAXN];
 dynamic_array<int, MAXN> cache[MAXT][MAXR];
 dynamic_array<std::tuple<double, int, int>, MAXT * MAXR * 4> candidates;
 dynamic_array<std::tuple<int, int, int>, MAXT * MAXR * MAXK> changed;
+dynamic_array<item_t, MAXT * MAXR * MAXK> nodes;
+double weight[MAXN][MAXT][MAXR][MAXK], capacity[MAXN][MAXT][MAXR][MAXK];
 inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][MAXT][MAXR][MAXK]) {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
@@ -253,6 +262,107 @@ inline void init() {
         }
     }
 }
+inline void update(const int n) {
+#ifdef __SMZ_NATIVE
+    for (auto [t, r, k] : changed) if (lock[t][r][k] != timestamp) {
+        if (power[n][t][r][k] > capacity[n][t][r][k]) {
+            abort();
+        }
+    }
+#endif
+    nodes.clear();
+    double number = 0;
+    for (int i = 0; i < changed.size(); ++i) {
+        auto [t, r, k] = changed[i];
+        if (lock[t][r][k] != timestamp) {
+            auto logv = std::log2(weight[n][t][r][k]);
+            nodes.push_back(item_t{
+                weight[n][t][r][k],
+                logv,
+                capacity[n][t][r][k],
+                i,
+                0
+            });
+            number += std::log2(1.0 + weight[n][t][r][k] * power[n][t][r][k]) - logv;
+        }
+    }
+    std::sort(nodes.begin(), nodes.end(), [](const auto &A, const auto &B) {
+        return A.raw > B.raw;
+    });
+    int size = nodes.size();
+    double common = std::exp2(number / size);
+    for (;;) {
+        for (int i = nodes.size() - 1; i >= 0; --i) if (nodes[i].state == 0) {
+            if (number < -nodes[i].log * size) {
+                number += nodes[i].log;
+                size -= 1;
+                nodes[i].state = -1;
+            }
+        }
+        double common = exp2(number / size);
+        bool flag = false;
+        for (int i = 0; i < nodes.size(); ++i) if (nodes[i].state == 0) {
+            if (common - 1.0 / nodes[i].raw > nodes[i].cap) {
+                auto [t, r, k] = changed[nodes[i].index];
+                rest[t][k] += power[n][t][r][k] - nodes[i].cap;
+                power[n][t][r][k] = nodes[i].cap;
+                number -= log2(1.0 + nodes[i].cap * nodes[i].raw);
+                number += nodes[i].log;
+                nodes[i].state = 1;
+                size -= 1;
+                flag = true;
+                for (int i = 0; i < nodes.size(); ++i) if (nodes[i].state == -1) {
+                    if (number > -nodes[i].log * size) {
+                        number -= nodes[i].log;
+                        size += 1;
+                        nodes[i].state = 0;
+                    }
+                }
+                break;
+            }
+        }
+        if (!flag) {
+            goto finish;
+        }
+    }
+    finish:;
+    common = exp2(number / size);
+    for (int i = 0; i < nodes.size(); ++i) {
+        auto [t, r, k] = changed[nodes[i].index];
+        if (nodes[i].state == 0) {
+            double value = common - 1.0 / nodes[i].raw;
+            if (value + EPS < nodes[i].cap) {
+                value += EPS;
+            }
+            rest[t][k] += power[n][t][r][k] - value;
+            power[n][t][r][k] = value;
+        }
+        else if (nodes[i].state == -1) {
+            rest[t][k] += power[n][t][r][k];
+            power[n][t][r][k] = 0;
+            cache[t][r].erase(n);
+            if (k == position[t][r] && !disable[t][r]) {
+                for (auto m : cache[t][r]) {
+                    auto cof = sinr[m][t][r][k];
+                    for (auto u : cache[t][r]) {
+                        if (u != m) {
+                            cof *= D[k][r][m][u];
+                        }
+                    }
+                    auto aim = power[m][t][r][k] * D[k][r][n][m];
+                    rest[t][k] += power[m][t][r][k] - aim;
+                    power[m][t][r][k] = aim;
+                }
+            }
+            if (cache[t][r].empty()) {
+                thickness[t] -= 1;
+            }
+            if (cache[t][r].size() <= 1) {
+                disable[t][r] = false;
+            }
+        }
+    }
+}
 inline double add(int j) {
     static dynamic_array<int, MAXR> RBG[MAXT];
     const int n = belong[j];
@@ -275,8 +385,8 @@ inline double add(int j) {
                 }
                 const int limit = std::min(std::ceil(rest[t][k]), 4.0);
                 for (int i = 1; i <= limit; ++i) {
-                    auto weight = std::log(1.0 + i * value) - std::log(1.0 + (i - 1) * value);
-                    candidates.push_back(std::make_tuple(-weight, t, r));
+                    auto val = std::log2(1.0 + i * value) - std::log2(1.0 + (i - 1) * value);
+                    candidates.push_back(std::make_tuple(-val, t, r));
                 }
             }
             else {
@@ -318,6 +428,7 @@ inline double add(int j) {
                 if (RBG[t].size() == 1) {
                     if (distribute > 0) {
                         power[n][t][r][k] += distribute;
+                        capacity[n][t][r][k] = power[n][t][r][k];
                         ret += 1;
                         rest[t][k] -= distribute;
                         product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
@@ -326,6 +437,7 @@ inline double add(int j) {
                         visit[t][k] = timestamp;
                         cache[t][r].push_back(n);
                         changed.push_back(std::make_tuple(t, r, k));
+                        weight[n][t][r][k] = sinr[n][t][r][k];
                         position[t][r] = k;
                         if (cache[t][r].size() == 1) {
                             thickness[t] += 1;
@@ -353,6 +465,7 @@ inline double add(int j) {
                     sum -= old_val;
                     sum += new_val;
                     power[n][t][r][k] = distribute;
+                    capacity[n][t][r][k] = power[n][t][r][k];
                     ret += 1;
                     rest[t][k] -= power[n][t][r][k];
                     product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
@@ -362,12 +475,14 @@ inline double add(int j) {
                     visit[t][k] = timestamp;
                     cache[t][r].push_back(n);
                     changed.push_back(std::make_tuple(t, r, k));
+                    weight[n][t][r][k] = sinr[n][t][r][k];
                     if (cache[t][r].size() == 1) {
                         thickness[t] += 1;
                         modify -= 1;
                     }
                     for (auto s : RBG[t]) {
                         disable[t][s] = true;
+                        lock[t][s][k] = timestamp;
                     }
                 }
                 if (sum > tbs) {
@@ -421,8 +536,10 @@ inline double add(int j) {
                 }
                 cache[t][r].push_back(n);
                 changed.push_back(std::make_tuple(t, r, k));
+                weight[n][t][r][k] = cof;
                 auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
                 power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need, 1.0});
+                capacity[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, 1.0});
                 sum += std::log2(1.0 + power[n][t][r][k] * cof);
                 rest[t][k] -= tot + power[n][t][r][k];
             }
@@ -439,6 +556,7 @@ inline double add(int j) {
                 auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
                 double distribute = std::min({rest[t][k], four - pw, need - power[n][t][r][k], 1.0});
                 power[n][t][r][k] += distribute;
+                capacity[n][t][r][k] += std::min({rest[t][k], four - pw, 1.0});
                 sum += std::log2(1.0 + power[n][t][r][k] * cof);
                 rest[t][k] -= distribute;
             }
@@ -450,6 +568,7 @@ inline double add(int j) {
     }
     finish:;
     if (sum > tbs) {
+        update(n);
         return ret;
     }
     for (auto [m, t, r, k, delta] : backup) {
