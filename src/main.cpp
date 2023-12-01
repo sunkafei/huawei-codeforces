@@ -15,7 +15,7 @@ double sinr[MAXN][MAXT][MAXR][MAXK], D[MAXK][MAXR][MAXN][MAXN];
 int id[MAXJ], tbs[MAXJ], belong[MAXJ], start[MAXJ], length[MAXJ];
 char buffer[MAXBUFFER * 2];
 const char *pointer = buffer + MAXBUFFER;
-double sinr_sum[MAXN][MAXT][MAXR][4];
+double sinr_sum[MAXN][MAXT][MAXR];
 int query[MAXT][MAXN];
 uint64_t start_time;
 template<typename T, int maxsize> class dynamic_array {
@@ -262,7 +262,7 @@ inline double add(int j) {
         RBG[t].clear();
         for (int r = 0; r < R; ++r) {
             if (cache[t][r].size() == 0) {
-                candidates.push_back(std::make_tuple(-sinr_sum[n][t][r][0], t, r));
+                candidates.push_back(std::make_tuple(-sinr_sum[n][t][r], t, r));
             }
             else if (!disable[t][r]) {
                 const int k = position[t][r];
@@ -799,13 +799,7 @@ void preprocess() {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
                 for (int n = 0; n < N; ++n) {
-                    double val[5] = {0};
-                    for (int i = 1; i <= 4; ++i) {
-                        val[i] = std::log2(1.0 + i * sinr[n][t][r][k]);
-                    }
-                    for (int i = 0; i < 4; ++i) {
-                        sinr_sum[n][t][r][i] = val[i + 1] - val[i];
-                    }
+                    sinr_sum[n][t][r] += std::log2(1.0 + sinr[n][t][r][k]);
                 }
             }
         }
