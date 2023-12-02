@@ -185,6 +185,7 @@ int thickness[MAXT], disable[MAXT][MAXR], size[MAXT][MAXK], position[MAXT][MAXR]
 long long visit[MAXT][MAXK], lock[MAXT][MAXR][MAXK], timestamp = 1;
 double change[MAXN];
 dynamic_array<int, MAXN> cache[MAXT][MAXR];
+dynamic_array<int, MAXR> RBG[MAXT];
 dynamic_array<std::tuple<double, int, int>, MAXT * MAXR * 8> candidates;
 dynamic_array<std::tuple<int, int, int>, MAXT * MAXR * MAXK> changed;
 dynamic_array<item_t, MAXT * MAXR * MAXK> nodes;
@@ -374,7 +375,6 @@ inline void update(const int n) {
     }
 }
 inline double add(int j) {
-    static dynamic_array<int, MAXR> RBG[MAXT];
     const int n = belong[j];
     const double tbs = ::tbs[j] / 192.0;
     double ret = 0;
@@ -558,20 +558,11 @@ inline double add(int j) {
                 rest[t][k] -= tot + power[n][t][r][k];
             }
             else {
-                double pw = 0;
-                auto cof = sinr[n][t][r][k];
-                for (auto m : cache[t][r]) {
-                    if (m != n) {
-                        cof *= D[k][r][n][m];
-                    }
-                    pw += power[m][t][r][k];
-                }
-                sum -= std::log2(1.0 + power[n][t][r][k] * cof);
-                auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
-                double distribute = std::min({rest[t][k], four - pw, need - power[n][t][r][k], 0.2});
+                sum -= std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
+                auto need = (std::exp2(tbs - sum) - 1.0) / weight[n][t][r][k] + EPS;
+                double distribute = std::min({capacity[n][t][r][k] - power[n][t][r][k], need - power[n][t][r][k], 0.2});
                 power[n][t][r][k] = std::min(power[n][t][r][k] + distribute, capacity[n][t][r][k]);
-                //capacity[n][t][r][k] += std::min({rest[t][k], four - pw, 1.0});
-                sum += std::log2(1.0 + power[n][t][r][k] * cof);
+                sum += std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
                 rest[t][k] -= distribute;
             }
             ret += 1;
