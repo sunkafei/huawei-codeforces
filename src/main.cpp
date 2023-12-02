@@ -373,7 +373,7 @@ inline void update(const int n) {
         }
     }
 }
-inline double add(int j, const double step=0.1) {
+inline double add(int j, const double step=0.2) {
     const int n = belong[j];
     const double tbs = ::tbs[j] / 192.0;
     double ret = 0, sum = 0;
@@ -389,12 +389,12 @@ inline double add(int j, const double step=0.1) {
             }
             else if (!disable[t][r]) {
                 const int k = position[t][r];
-                double cof = sinr[n][t][r][k] / cache[t][r].size();
+                double cof = sinr[n][t][r][k]; // / cache[t][r].size()
                 for (auto m : cache[t][r]) {
                     cof *= D[k][r][n][m];
                 }
-                double value = std::log2(1.0 + step * cof);
-                candidates.emplace(value*50, t, r);
+                double value = std::log2(1.0 + step * cof) * 4 / step;
+                candidates.emplace(value, t, r);
             }
         }
     }
@@ -547,24 +547,24 @@ inline double add(int j, const double step=0.1) {
                 changed.push_back(std::make_tuple(t, r, k));
                 weight[n][t][r][k] = cof;
                 auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
-                power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need, 0.2});
+                power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need, step});
                 capacity[n][t][r][k] = std::min({rest[t][k] - tot, four - pw});
                 sum += std::log2(1.0 + power[n][t][r][k] * cof);
                 rest[t][k] -= tot + power[n][t][r][k];
-                double value = std::log2(1.0 + (power[n][t][r][k] + step) * cof / cache[t][r].size()) - std::log2(1.0 + power[n][t][r][k] * cof / cache[t][r].size());
-                candidates.emplace(value*50, t, r);
+                double value = std::log2(1.0 + (power[n][t][r][k] + step) * cof) - std::log2(1.0 + power[n][t][r][k] * cof);
+                candidates.emplace(value * (capacity[n][t][r][k] - power[n][t][r][k]) / step, t, r);
             }
             else {
                 sum -= std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
                 auto need = (std::exp2(tbs - sum) - 1.0) / weight[n][t][r][k] + EPS;
-                double distribute = std::min({capacity[n][t][r][k] - power[n][t][r][k], need - power[n][t][r][k], 0.2});
+                double distribute = std::min({capacity[n][t][r][k] - power[n][t][r][k], need - power[n][t][r][k], step}); 
                 power[n][t][r][k] = std::min(power[n][t][r][k] + distribute, capacity[n][t][r][k]);
                 double contribution = std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
                 sum += contribution;
                 rest[t][k] -= distribute;
                 if (distribute > 0) {
-                    double value = std::log2(1.0 + (power[n][t][r][k] + step) * weight[n][t][r][k] / cache[t][r].size()) - std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k] / cache[t][r].size());
-                    candidates.emplace(value*50, t, r);
+                    double value = std::log2(1.0 + (power[n][t][r][k] + step) * weight[n][t][r][k]) - std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
+                    candidates.emplace(value * (capacity[n][t][r][k] - power[n][t][r][k]) / step, t, r);
                 }
             }
             ret += 1;
