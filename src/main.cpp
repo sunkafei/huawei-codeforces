@@ -866,64 +866,54 @@ void solve() {
         shuffle(indices.begin(), indices.end(), engine);
     }
     while (!tle()) {
-        dynamic_array<int, MAXT> time;
-        for (int i = 0; i < T; ++i) {
-            time.push_back(i);
+        resume();
+        cnt = best;
+        if (tle()) {
+            goto finish;
         }
-        shuffle(time.begin(), time.end(), engine);
-        for (auto t : time) {
-            resume();
-            cnt = best;
-            if (tle()) {
-                goto finish;
-            }
-            for (int j = 0; j < J; ++j) {
-                processed[j] = false;
-                const int n = belong[j];
-                for (int t = start[j]; t < start[j] + length[j]; ++t) {
-                    for (int r = 0; r < R; ++r) {
-                        if (cache[t][r].contains(n)) {
-                            processed[j] = true;
-                            goto bbk;
-                        }
+        for (int j = 0; j < J; ++j) {
+            processed[j] = false;
+            const int n = belong[j];
+            for (int t = start[j]; t < start[j] + length[j]; ++t) {
+                for (int r = 0; r < R; ++r) {
+                    if (cache[t][r].contains(n)) {
+                        processed[j] = true;
+                        goto bbk;
                     }
                 }
-                bbk:;
             }
+            bbk:;
+        }
 #ifdef __SMZ_NATIVE
-            check(cnt);
+        check(cnt);
 #endif
-            for (int r = 0; r < R; ++r) {
-                for (auto n : cache[t][r]) {
-                    int j = query[t][n];
-                    if (processed[j]) {
-                        processed[j] = false;
-                        undo(j);
-                        cnt -= 1;
-                        if (tle()) {
-                            goto finish;
-                        }
-                    }
-                }
-            }
-            shuffle(indices.begin(), indices.end(), engine);
-            for (auto j : indices) {
-                if (processed[j] || start[j] > t || start[j] + length[j] <= t) {
-                    continue;
-                }
+        for (int j = 0; j < J; ++j) {
+            if (processed[j] && rand() % 10 == 0) {
+                processed[j] = false;
+                undo(j);
+                cnt -= 1;
                 if (tle()) {
                     goto finish;
                 }
-                processed[j] = add(j);
-                cnt += processed[j];
+            }
+        }
+        shuffle(indices.begin(), indices.end(), engine);
+        for (auto j : indices) {
+            if (processed[j]) {
+                continue;
+            }
+            if (tle()) {
+                goto finish;
+            }
+            processed[j] = add(j);
+            cnt += processed[j];
 #ifdef __SMZ_NATIVE
-                check(cnt);
+            check(cnt);
 #endif
-            }
-            if (cnt > best) {
-                best = cnt;
-                save();
-            }
+        }
+        if (cnt > best) {
+            best = cnt;
+            save();
         }
     }
     finish:;
