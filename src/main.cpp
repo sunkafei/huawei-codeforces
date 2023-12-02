@@ -563,6 +563,7 @@ inline double add(int j, const double step=0.2) {
                 rest[t][k] -= tot + power[n][t][r][k];
                 double value = std::log2(1.0 + (power[n][t][r][k] + step) * cof) - std::log2(1.0 + power[n][t][r][k] * cof);
                 candidates.emplace(value * (capacity[n][t][r][k] - power[n][t][r][k]) / step, t, r);
+                ret += 1;
             }
             else {
                 sum -= std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
@@ -577,7 +578,6 @@ inline double add(int j, const double step=0.2) {
                     candidates.emplace(value * (capacity[n][t][r][k] - power[n][t][r][k]) / step, t, r);
                 }
             }
-            ret += 1;
             if (sum > tbs) {
                 goto finish;
             }
