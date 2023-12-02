@@ -396,7 +396,7 @@ inline double add(int j, const double step=0.5) {
             }
             else if (!disable[t][r]) {
                 const int k = position[t][r];
-                double cof = sinr[n][t][r][k]; // / cache[t][r].size()
+                double cof = sinr[n][t][r][k] / cache[t][r].size();
                 for (auto m : cache[t][r]) {
                     cof *= D[k][r][n][m];
                 }
@@ -561,7 +561,7 @@ inline double add(int j, const double step=0.5) {
                 capacity[n][t][r][k] = std::min({rest[t][k] - tot, four - pw});
                 sum += std::log2(1.0 + power[n][t][r][k] * cof);
                 rest[t][k] -= tot + power[n][t][r][k];
-                double value = std::log2(1.0 + (power[n][t][r][k] + step) * cof) - std::log2(1.0 + power[n][t][r][k] * cof);
+                double value = std::log2(1.0 + (power[n][t][r][k] + step) * cof / cache[t][r].size()) - std::log2(1.0 + power[n][t][r][k] * cof / cache[t][r].size());
                 candidates.emplace(value * (capacity[n][t][r][k] - power[n][t][r][k]) / step, t, r);
                 ret += 1;
             }
@@ -574,7 +574,7 @@ inline double add(int j, const double step=0.5) {
                 sum += contribution;
                 rest[t][k] -= distribute;
                 if (distribute > 0) {
-                    double value = std::log2(1.0 + (power[n][t][r][k] + step) * weight[n][t][r][k]) - std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
+                    double value = std::log2(1.0 + (power[n][t][r][k] + step) * weight[n][t][r][k] / cache[t][r].size()) - std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k] / cache[t][r].size());
                     candidates.emplace(value * (capacity[n][t][r][k] - power[n][t][r][k]) / step, t, r);
                 }
             }
