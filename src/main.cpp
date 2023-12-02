@@ -19,6 +19,7 @@ double sinr_sum[MAXN][MAXT][MAXR];
 int query[MAXT][MAXN];
 uint64_t start_time;
 struct item_t {
+    double add;
     double raw;
     double log;
     double cap;
@@ -188,7 +189,7 @@ dynamic_array<int, MAXN> cache[MAXT][MAXR];
 dynamic_array<int, MAXR> RBG[MAXT];
 dynamic_array<std::tuple<int, int, int>, MAXT * MAXR * MAXK> changed;
 dynamic_array<item_t, MAXT * MAXR * MAXK> nodes;
-double weight[MAXN][MAXT][MAXR][MAXK], capacity[MAXN][MAXT][MAXR][MAXK];
+double weight[MAXN][MAXT][MAXR][MAXK], capacity[MAXN][MAXT][MAXR][MAXK], attachment[MAXN][MAXT][MAXR][MAXK];
 inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][MAXT][MAXR][MAXK]) {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
@@ -277,6 +278,7 @@ inline void update(const int n) {
         if (lock[t][r][k] != timestamp) {
             auto logv = std::log2(weight[n][t][r][k]);
             nodes.push_back(item_t{
+                attachment[n][t][r][k],
                 weight[n][t][r][k],
                 logv,
                 capacity[n][t][r][k],
@@ -287,7 +289,10 @@ inline void update(const int n) {
         }
     }
     std::sort(nodes.begin(), nodes.end(), [](const auto &A, const auto &B) {
-        return A.raw > B.raw;
+        if (A.raw != B.raw) {
+            return A.raw > B.raw;
+        }
+        return A.add < B.add;
     });
     int size = nodes.size();
     double common = std::exp2(number / size);
@@ -331,6 +336,8 @@ inline void update(const int n) {
         }
     }
     finish:;
+    for (int i = nodes.size() - 1; i >= 0; --i) if (nodes[i].state == 0) {
+    } 
     common = std::exp2(number / size);
     for (int i = 0; i < nodes.size(); ++i) {
         auto [t, r, k] = changed[nodes[i].index];
@@ -428,6 +435,7 @@ inline double add(int j, const double step=0.2) {
                 if (thickness[t] + modify == R - 1) {
                     distribute = std::min(rest[t][k], 4.0);
                 }
+                attachment[n][t][r][k] = 0;
                 if (RBG[t].size() == 1) {
                     if (distribute > 0) {
                         power[n][t][r][k] += distribute;
@@ -537,10 +545,12 @@ inline double add(int j, const double step=0.2) {
                     continue;
                 }
                 visit[t][k] = -timestamp;
+                attachment[n][t][r][k] = 0;
                 auto cof = sinr[n][t][r][k];
                 for (auto m : cache[t][r]) {
                     backup.emplace_back(m, t, r, k, change[m]);
                     power[m][t][r][k] += change[m];
+                    attachment[n][t][r][k] += change[m];
                     cof *= D[k][r][n][m];
                 }
                 cache[t][r].push_back(n);
