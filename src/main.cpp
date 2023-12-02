@@ -380,7 +380,7 @@ inline void update(const int n) {
         }
     }
 }
-inline double add(int j, const double step=0.2) {
+inline double add(int j, const double step=0.5) {
     const int n = belong[j];
     const double tbs = ::tbs[j] / 192.0;
     double ret = 0, sum = 0;
