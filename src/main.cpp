@@ -781,6 +781,17 @@ inline void check(int best) {
     check_answer(best, power);
 #endif
 }
+inline void save() {
+    for (int n = 0; n < N; ++n) {
+        for (int t = 0; t < T; ++t) {
+            for (int r = 0; r < R; ++r) {
+                for (int k = 0; k < K; ++k) {
+                    answer[n][t][r][k] = power[n][t][r][k];
+                }
+            }
+        }
+    }
+}
 void solve() {
     using item_t = std::pair<double, int>;
     std::priority_queue<item_t, std::vector<item_t>, std::greater<item_t>> queue;
@@ -793,9 +804,6 @@ void solve() {
     for (int j = 0; j < J; ++j) {
         indices.push_back(j);
     }
-    std::sort(indices.begin(), indices.end(), [](int x, int y) {
-        return tbs[x] < tbs[y];
-    });
     int best = 0, cnt = 0;
     init();
     bool processed[MAXJ] = {};
@@ -817,10 +825,8 @@ void solve() {
 #endif
         }
     }
-    for (auto j : indices) {
-        if (processed[j]) {
-            continue;
-        }
+    while (queue.size()) {
+        auto [_, j] = queue.top(); queue.pop();
         if (tle()) {
             goto next;
         }
@@ -832,15 +838,32 @@ void solve() {
     }
     next: if (cnt > best) {
         best = cnt;
-        for (int n = 0; n < N; ++n) {
-            for (int t = 0; t < T; ++t) {
-                for (int r = 0; r < R; ++r) {
-                    for (int k = 0; k < K; ++k) {
-                        answer[n][t][r][k] = power[n][t][r][k];
-                    }
+        save();
+    }
+    while (!tle()) {
+        for (auto j : indices) {
+            if (processed[j]) {
+                processed[j] = false;
+                undo(j);
+                cnt -= 1;
+                if (tle()) {
+                    goto finish;
                 }
             }
+            processed[j] = add(j);
+            cnt += processed[j];
+#ifdef __SMZ_NATIVE
+            check(cnt);
+#endif
         }
+        if (cnt > best) {
+            best = cnt;
+            save();
+        }
+        else {
+            break;
+        }
+        shuffle(indices.begin(), indices.end(), engine);
     }
     while (!tle()) {
         dynamic_array<int, MAXT> time;
@@ -899,15 +922,7 @@ void solve() {
             }
             if (cnt > best) {
                 best = cnt;
-                for (int n = 0; n < N; ++n) {
-                    for (int t = 0; t < T; ++t) {
-                        for (int r = 0; r < R; ++r) {
-                            for (int k = 0; k < K; ++k) {
-                                answer[n][t][r][k] = power[n][t][r][k];
-                            }
-                        }
-                    }
-                }
+                save();
             }
         }
     }

@@ -7,7 +7,6 @@ target("huawei-codeforces")
     add_defines("__SMZ_NATIVE")
     if is_mode("debug") then 
         add_cflags("-fomit-frame-pointer")
-        add_defines("__SMZ_RUNTIME_CHECK")
         add_cxflags("-fsanitize=address", "-ftrapv")
         add_mxflags("-fsanitize=address", "-ftrapv")
         add_ldflags("-fsanitize=address")
