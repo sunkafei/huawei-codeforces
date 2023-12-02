@@ -825,7 +825,7 @@ void solve() {
 #endif
         }
     }
-    while (queue.size()) {
+    while (queue.size() > 1) {
         auto [_, j] = queue.top(); queue.pop();
         if (tle()) {
             goto next;
