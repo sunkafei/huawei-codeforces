@@ -186,7 +186,6 @@ long long visit[MAXT][MAXK], lock[MAXT][MAXR][MAXK], timestamp = 1;
 double change[MAXN];
 dynamic_array<int, MAXN> cache[MAXT][MAXR];
 dynamic_array<int, MAXR> RBG[MAXT];
-dynamic_array<std::tuple<double, int, int>, MAXT * MAXR * 8> candidates;
 dynamic_array<std::tuple<int, int, int>, MAXT * MAXR * MAXK> changed;
 dynamic_array<item_t, MAXT * MAXR * MAXK> nodes;
 double weight[MAXN][MAXT][MAXR][MAXK], capacity[MAXN][MAXT][MAXR][MAXK];
@@ -374,37 +373,33 @@ inline void update(const int n) {
         }
     }
 }
-inline double add(int j) {
+inline double add(int j, const double step=0.1) {
     const int n = belong[j];
     const double tbs = ::tbs[j] / 192.0;
-    double ret = 0;
+    double ret = 0, sum = 0;
+    std::priority_queue<std::tuple<double, int, int>> candidates;
+    std::vector<std::tuple<int, int, int, int, double>> backup;
     timestamp += 1;
-    candidates.clear();
     changed.clear();
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         RBG[t].clear();
         for (int r = 0; r < R; ++r) {
             if (cache[t][r].size() == 0) {
-                candidates.push_back(std::make_tuple(-sinr_sum[n][t][r], t, r));
+                candidates.emplace(sinr_sum[n][t][r], t, r);
             }
             else if (!disable[t][r]) {
                 const int k = position[t][r];
-                double value = sinr[n][t][r][k] / cache[t][r].size();
+                double cof = sinr[n][t][r][k] / cache[t][r].size();
                 for (auto m : cache[t][r]) {
-                    value *= D[k][r][n][m];
+                    cof *= D[k][r][n][m];
                 }
-                const double limit = std::min(std::ceil(rest[t][k]), 4.0);
-                for (double i = 0.2; i <= limit; i += 0.2) {
-                    auto val = std::log2(1.0 + i * value) - std::log2(1.0 + (i - 0.2) * value);
-                    candidates.push_back(std::make_tuple(-val*50, t, r));
-                }
+                double value = std::log2(1.0 + step * cof);
+                candidates.emplace(value*50, t, r);
             }
         }
     }
-    std::sort(candidates.begin(), candidates.end());
-    double sum = 0;
-    std::vector<std::tuple<int, int, int, int, double>> backup;
-    for (auto [_, t, r] : candidates) {
+    while (candidates.size()) {
+        auto [tmp, t, r] = candidates.top(); candidates.pop();
         if (cache[t][r].empty()) {
             RBG[t].push_back(r);
             if (RBG[t].size() == 1) {
@@ -556,14 +551,21 @@ inline double add(int j) {
                 capacity[n][t][r][k] = std::min({rest[t][k] - tot, four - pw});
                 sum += std::log2(1.0 + power[n][t][r][k] * cof);
                 rest[t][k] -= tot + power[n][t][r][k];
+                double value = std::log2(1.0 + (power[n][t][r][k] + step) * cof / cache[t][r].size()) - std::log2(1.0 + power[n][t][r][k] * cof / cache[t][r].size());
+                candidates.emplace(value*50, t, r);
             }
             else {
                 sum -= std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
                 auto need = (std::exp2(tbs - sum) - 1.0) / weight[n][t][r][k] + EPS;
                 double distribute = std::min({capacity[n][t][r][k] - power[n][t][r][k], need - power[n][t][r][k], 0.2});
                 power[n][t][r][k] = std::min(power[n][t][r][k] + distribute, capacity[n][t][r][k]);
-                sum += std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
+                double contribution = std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
+                sum += contribution;
                 rest[t][k] -= distribute;
+                if (distribute > 0) {
+                    double value = std::log2(1.0 + (power[n][t][r][k] + step) * weight[n][t][r][k] / cache[t][r].size()) - std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k] / cache[t][r].size());
+                    candidates.emplace(value*50, t, r);
+                }
             }
             ret += 1;
             if (sum > tbs) {
