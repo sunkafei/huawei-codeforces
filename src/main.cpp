@@ -994,6 +994,13 @@ void solve() {
         for (auto t : times) {
             dynamic_array<int, MAXJ> deleted, inserted;
             double delta = 0;
+            int fail = 0;
+            for (auto j : vect[t]) if (!processed[j]) {
+                fail += 1;
+            }
+            if (fail == 0) {
+                continue;
+            }
             for (auto j : vect[t]) if (processed[j] && rand() % 2 == 0) {
                 if (tle()) {
                     goto finish;
@@ -1013,6 +1020,12 @@ void solve() {
                     if (processed[j]) {
                         delta += flow;
                         inserted.push_back(j);
+                    }
+                    else {
+                        fail -= 1;
+                        if (fail < 0) {
+                            break;
+                        }
                     }
                 }
             }
