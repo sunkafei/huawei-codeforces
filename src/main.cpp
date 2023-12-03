@@ -494,19 +494,43 @@ inline double add(int j, const double step=0.5) {
                     }
                     continue;
                 }
-                double old_inner = std::pow(product[t][k], 1.0 / size[t][k]);
-                double old_val = std::log2(1.0 + old_inner) * size[t][k];
-                double new_inner = std::pow(product[t][k] * sinr[n][t][r][k] * distribute, 1.0 / (size[t][k] + 1));
-                double new_val = std::log2(1.0 + new_inner) * (size[t][k] + 1);
-                if (new_val > old_val) {
-                    sum -= old_val;
-                    sum += new_val;
+                double factor = 1.0, tot = 0.0;
+                for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
+                    tot += power[n][t][s][k];
+                    factor /= power[n][t][s][k];
+                }
+                double avg = (tot + distribute) / size[t][k];
+                factor *= std::pow(avg, size[t][k]);
+                if (avg > 4.0) {
+                    factor = 0;
+                }
+                double inner1 = std::pow(product[t][k] * factor, 1.0 / size[t][k]);
+                double val1 = std::log2(1.0 + inner1) * size[t][k];
+                double inner2 = std::pow(product[t][k] * sinr[n][t][r][k] * distribute, 1.0 / (size[t][k] + 1));
+                double val2 = std::log2(1.0 + inner2) * (size[t][k] + 1);
+                double tmp = std::pow(product[t][k], 1.0 / size[t][k]);
+                double previous = std::log2(1.0 + tmp) * size[t][k];
+                double sum_old = sum - previous;
+                if (val1 > val2 && val1 > previous) {
+                    sum -= previous;
+                    sum += val1;
+                    for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
+                        power[n][t][s][k] = avg;
+                        capacity[n][t][s][k] = avg;
+                    }
+                    product[t][k] *= factor;
+                    rest[t][k] -= distribute;
+                    ret += 3;
+                }
+                else if (val2 > previous) {
+                    sum -= previous;
+                    sum += val2;
                     power[n][t][r][k] = distribute;
                     capacity[n][t][r][k] = power[n][t][r][k];
-                    ret += 3;
-                    rest[t][k] -= power[n][t][r][k];
                     product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
                     size[t][k] += 1;
+                    rest[t][k] -= distribute;
+                    ret += 3;
                 }
                 if (power[n][t][r][k] > 0) {
                     visit[t][k] = timestamp;
@@ -517,7 +541,7 @@ inline double add(int j, const double step=0.5) {
                         thickness[t] += 1;
                         modify -= 1;
                     }
-                    for (auto s : RBG[t]) {
+                    for (auto s : RBG[t]) if (cache[t][s].size()) {
                         disable[t][s] = true;
                         lock[t][s][k] = timestamp;
                         froze[t][s] = timestamp;
@@ -525,7 +549,7 @@ inline double add(int j, const double step=0.5) {
                 }
                 if (sum > tbs) {
                     if (sum > tbs + EPS) {
-                        double newval = tbs + EPS - sum + new_val;
+                        double newval = tbs + EPS - sum_old;
                         double pw = std::pow(std::exp2(newval / size[t][k]) - 1.0, size[t][k]);
                         for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
                             pw /= sinr[n][t][s][k];
@@ -873,6 +897,9 @@ void solve() {
     while (queue.size() > 1 && !tle(600)) {
         auto [prev, j] = queue.top(); queue.pop();
         auto val = add(j);
+#ifdef __SMZ_NATIVE
+        check(cnt + bool(val));
+#endif
         if (val == 0) {
             continue;
         }
@@ -904,6 +931,9 @@ void solve() {
         save();
     }
     while (!tle()) {
+#ifdef __SMZ_NATIVE
+        check(cnt);
+#endif
         for (auto j : indices) {
             if (processed[j]) {
                 processed[j] = false;
@@ -912,6 +942,9 @@ void solve() {
                 if (tle()) {
                     goto finish;
                 }
+#ifdef __SMZ_NATIVE
+                check(cnt);
+#endif
             }
             processed[j] = add(j);
             cnt += processed[j];
