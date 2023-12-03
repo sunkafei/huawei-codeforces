@@ -610,29 +610,32 @@ inline void undo(int j) {
     const int n = belong[j];
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         for (int r = 0; r < R; ++r) {
-            for (int k = 0; k < K; ++k) {
+            if (disable[t][r]) {
+                if (cache[t][r].front() == n) {
+                    disable[t][r] = false;
+                    thickness[t] -= 1;
+                    cache[t][r].clear();
+                    for (int k = 0; k < K; ++k) {
+                        if (power[n][t][r][k] > 0) {
+                            rest[t][k] += power[n][t][r][k];
+                            power[n][t][r][k] = 0;
+                        }
+                    }
+                }
+            }
+            else if (cache[t][r].size()) {
+                const int k = position[t][r];
                 if (power[n][t][r][k] > 0) {
                     rest[t][k] += power[n][t][r][k];
                     power[n][t][r][k] = 0;
                     cache[t][r].erase(n);
-                    if (k == position[t][r] && !disable[t][r]) {
-                        for (auto m : cache[t][r]) {
-                            auto cof = sinr[m][t][r][k];
-                            for (auto u : cache[t][r]) {
-                                if (u != m) {
-                                    cof *= D[k][r][m][u];
-                                }
-                            }
-                            auto aim = power[m][t][r][k] * D[k][r][n][m];
-                            rest[t][k] += power[m][t][r][k] - aim;
-                            power[m][t][r][k] = aim;
-                        }
+                    for (auto m : cache[t][r]) {
+                        auto aim = power[m][t][r][k] * D[k][r][n][m];
+                        rest[t][k] += power[m][t][r][k] - aim;
+                        power[m][t][r][k] = aim;
                     }
                     if (cache[t][r].empty()) {
                         thickness[t] -= 1;
-                    }
-                    if (disable[t][r]) {
-                        disable[t][r] = false;
                     }
                 }
             }
