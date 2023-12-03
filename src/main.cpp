@@ -240,9 +240,8 @@ inline void check_answer(int best, double (&answer)[MAXN][MAXT][MAXR][MAXK]=answ
 inline void init() {
     for (int j = 0; j < J; ++j) {
         processed[j] = false;
-    }
-    for (int n = 0; n < N; ++n) {
-        for (int t = 0; t < T; ++t) {
+        const int n = belong[j];
+        for (int t = start[j]; t < start[j] + length[j]; ++t) {
             for (int r = 0; r < R; ++r) {
                 for (int k = 0; k < K; ++k) {
                     power[n][t][r][k] = 0;
@@ -642,29 +641,25 @@ inline void undo(int j) {
 }
 inline void resume() {
     init();
-    for (int t = 0; t < T; ++t) {
-        for (int r = 0; r < R; ++r) {
-            int sum = 0;
-            for (int k = 0; k < K; ++k) {
-                bool vis = false;
-                for (int n = 0; n < N; ++n) {
-                    power[n][t][r][k] = answer[n][t][r][k];
-                    if (power[n][t][r][k] > 0) {
+    for (int j = 0; j < J; ++j) {
+        const int n = belong[j];
+        for (int t = start[j]; t < start[j] + length[j]; ++t) {
+            for (int r = 0; r < R; ++r) {
+                int sum = 0;
+                for (int k = 0; k < K; ++k) {
+                    if (answer[n][t][r][k] > 0) {
+                        power[n][t][r][k] = answer[n][t][r][k];
                         rest[t][k] -= power[n][t][r][k];
                         cache[t][r].push_back(n);
                         position[t][r] = k;
-                        vis = true;
+                        processed[query[t][n]] = true;
+                        sum += 1;
                     }
                 }
-                sum += vis;
+                if (sum >= 2) {
+                    disable[t][r] = true;
+                }
             }
-            if (sum >= 2) {
-                disable[t][r] = true;
-            }
-        }
-    }
-    for (int t = 0; t < T; ++t) {
-        for (int n = 0; n < N; ++n) {
             for (int k = 0; k < K; ++k) {
                 dynamic_array<int, MAXR> row;
                 for (int r = 0; r < R; ++r) {
@@ -686,19 +681,6 @@ inline void resume() {
                 thickness[t] += 1;
             }
         }
-    }
-    for (int j = 0; j < J; ++j) {
-        processed[j] = false;
-        const int n = belong[j];
-        for (int t = start[j]; t < start[j] + length[j]; ++t) {
-            for (int r = 0; r < R; ++r) {
-                if (cache[t][r].contains(n)) {
-                    processed[j] = true;
-                    goto bbk;
-                }
-            }
-        }
-        bbk:;
     }
 }
 inline void check(int best) {
