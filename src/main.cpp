@@ -183,7 +183,7 @@ double power[MAXN][MAXT][MAXR][MAXK], answer[MAXN][MAXT][MAXR][MAXK];
 double rest[MAXT][MAXK];
 double product[MAXT][MAXK];
 int thickness[MAXT], disable[MAXT][MAXR], size[MAXT][MAXK], position[MAXT][MAXR];
-long long visit[MAXT][MAXK], lock[MAXT][MAXR][MAXK], timestamp = 1;
+long long visit[MAXT][MAXK], lock[MAXT][MAXR][MAXK], froze[MAXT][MAXR], timestamp = 1;
 double change[MAXN];
 dynamic_array<int, MAXN> cache[MAXT][MAXR];
 dynamic_array<int, MAXR> RBG[MAXT];
@@ -339,8 +339,6 @@ inline void update(const int n) {
         }
     }
     finish:;
-    for (int i = nodes.size() - 1; i >= 0; --i) if (nodes[i].state == 0) {
-    } 
     common = std::exp2(number / size);
     for (int i = 0; i < nodes.size(); ++i) {
         auto [t, r, k] = changed[nodes[i].index];
@@ -372,11 +370,19 @@ inline void update(const int n) {
             if (cache[t][r].empty()) {
                 thickness[t] -= 1;
             }
-            if (cache[t][r].size() <= 1) {
-                disable[t][r] = false;
-                for (int k = 0; k < K; ++k) {
-                    if (power[n][t][r][k] > 0) {
-                        position[t][r] = k;
+            if (froze[t][r]) {
+                if (cache[t][r].size() == 0) {
+                    disable[t][r] = false;
+                }
+            }
+            else {
+                if (cache[t][r].size() <= 1) {
+                    disable[t][r] = false;
+                    for (int k = 0; k < K; ++k) {
+                        if (power[n][t][r][k] > 0) {
+                            position[t][r] = k;
+                            break;
+                        }
                     }
                 }
             }
@@ -509,6 +515,7 @@ inline double add(int j, const double step=0.5) {
                     for (auto s : RBG[t]) {
                         disable[t][s] = true;
                         lock[t][s][k] = timestamp;
+                        froze[t][s] = timestamp;
                     }
                 }
                 if (sum > tbs) {
@@ -608,6 +615,7 @@ inline double add(int j, const double step=0.5) {
 }
 inline void undo(int j) {
     const int n = belong[j];
+    processed[j] = false;
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         for (int r = 0; r < R; ++r) {
             if (disable[t][r]) {
@@ -660,6 +668,56 @@ inline void resume() {
                         if (cache[t][r].size() == 1) {
                             thickness[t] += 1;
                         }
+                    }
+                }
+                if (sum >= 2) {
+                    disable[t][r] = true;
+                }
+            }
+            for (int k = 0; k < K; ++k) {
+                dynamic_array<int, MAXR> row;
+                for (int r = 0; r < R; ++r) {
+                    if (power[n][t][r][k] > 0) {
+                        row.push_back(r);
+                    }
+                }
+                if (row.size() >= 2) {
+                    for (auto r : row) {
+                        disable[t][r] = true;
+                    }
+                }
+            }
+        }
+    }
+}
+inline void resume(const dynamic_array<int, MAXJ> &vec) {
+    for (auto j : vec) {
+        processed[j] = true;
+        const int n = belong[j];
+        for (int t = start[j]; t < start[j] + length[j]; ++t) {
+            for (int r = 0; r < R; ++r) {
+                if (cache[t][r].size() && !disable[t][r]) {
+                    int k = position[t][r];
+                    if (answer[n][t][r][k] > 0) {
+                        for (auto m : cache[t][r]) {
+                            auto aim = answer[m][t][r][k];
+                            rest[t][k] += power[m][t][r][k] - aim;
+                            power[m][t][r][k] = aim;
+                        }
+                    }
+                }
+                int sum = 0;
+                for (int k = 0; k < K; ++k) {
+                    if (answer[n][t][r][k] > 0) {
+                        rest[t][k] += power[n][t][r][k] - answer[n][t][r][k];
+                        power[n][t][r][k] = answer[n][t][r][k];
+                        cache[t][r].push_back(n);
+                        position[t][r] = k;
+                        sum += 1;
+                        if (cache[t][r].size() == 1) {
+                            thickness[t] += 1;
+                        }
+
                     }
                 }
                 if (sum >= 2) {
@@ -862,23 +920,26 @@ void solve() {
         }
         shuffle(indices.begin(), indices.end(), engine);
     }
-    while (!tle()) {
+    if (!tle()) {
         resume();
         cnt = best;
-        if (tle()) {
-            goto finish;
-        }
+    }
+    while (!tle()) {
 #ifdef __SMZ_NATIVE
         check(cnt);
 #endif
+        dynamic_array<int, MAXJ> deleted, inserted;
         for (int j = 0; j < J; ++j) {
             if (processed[j] && rand() % 10 == 0) {
-                processed[j] = false;
                 undo(j);
                 cnt -= 1;
+                deleted.push_back(j);
                 if (tle()) {
                     goto finish;
                 }
+#ifdef __SMZ_NATIVE
+                check(cnt);
+#endif
             }
         }
         shuffle(indices.begin(), indices.end(), engine);
@@ -889,8 +950,14 @@ void solve() {
             if (tle()) {
                 goto finish;
             }
+#ifdef __SMZ_NATIVE
+            check(cnt);
+#endif
             processed[j] = add(j);
             cnt += processed[j];
+            if (processed[j]) {
+                inserted.push_back(j);
+            }
 #ifdef __SMZ_NATIVE
             check(cnt);
 #endif
@@ -898,6 +965,23 @@ void solve() {
         if (cnt > best) {
             best = cnt;
             save();
+        }
+        else {
+            for (auto j : inserted) {
+                undo(j);
+                cnt -= 1;
+            }
+#ifdef __SMZ_NATIVE
+            check(cnt);
+#endif
+            resume(deleted);
+            cnt += deleted.size();
+#ifdef __SMZ_NATIVE
+            check(cnt);
+            if (cnt != best) {
+                abort();
+            }
+#endif
         }
     }
     finish:;
@@ -937,7 +1021,7 @@ void preprocess() {
 int main() {
     start_time = mutime();
 #ifdef __SMZ_NATIVE
-    freopen("21", "r", stdin);
+    freopen("06", "r", stdin);
 #endif
     ::N = read_int();
     ::K = read_int();
