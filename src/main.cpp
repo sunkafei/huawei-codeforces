@@ -352,8 +352,8 @@ inline void update(const int n) {
         auto [t, r, k] = changed[nodes[i].index];
         if (nodes[i].state == 0) {
             double value = common - 1.0 / nodes[i].raw;
-            if (value + EPS < nodes[i].cap) {
-                value += EPS;
+            if (value + 5e-7 < nodes[i].cap) {
+                value += 5e-7;
             }
             rest[t][k] += power[n][t][r][k] - value;
             power[n][t][r][k] = value;
