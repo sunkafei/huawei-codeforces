@@ -451,7 +451,7 @@ inline double add(int j, const double step=0.5) {
                     if (distribute > 0) {
                         power[n][t][r][k] += distribute;
                         capacity[n][t][r][k] = power[n][t][r][k];
-                        ret += 1;
+                        ret += 3;
                         rest[t][k] -= distribute;
                         product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
                         size[t][k] += 1;
@@ -486,6 +486,9 @@ inline double add(int j, const double step=0.5) {
                                     capacity[n][t][r][indices[x]] = distribute;
                                 }
                             }
+                            else {
+                                ret -= 2;
+                            }
                             goto finish;
                         }
                     }
@@ -500,7 +503,7 @@ inline double add(int j, const double step=0.5) {
                     sum += new_val;
                     power[n][t][r][k] = distribute;
                     capacity[n][t][r][k] = power[n][t][r][k];
-                    ret += 1;
+                    ret += 3;
                     rest[t][k] -= power[n][t][r][k];
                     product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
                     size[t][k] += 1;
