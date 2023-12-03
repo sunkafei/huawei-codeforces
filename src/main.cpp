@@ -276,6 +276,7 @@ inline void update(const int n) {
 #endif
     nodes.clear();
     double number = 0;
+    bool ok = false;
     for (int i = 0; i < changed.size(); ++i) {
         auto [t, r, k] = changed[i];
         if (lock[t][r][k] != timestamp) {
@@ -288,8 +289,14 @@ inline void update(const int n) {
                 i,
                 0
             });
+            if (power[n][t][r][k] < capacity[n][t][r][k]) {
+                ok = true;
+            }
             number += std::log2(1.0 + weight[n][t][r][k] * power[n][t][r][k]) - logv;
         }
+    }
+    if (!ok) {
+        return;
     }
     std::sort(nodes.begin(), nodes.end(), [](const auto &A, const auto &B) {
         if (A.raw != B.raw) {
@@ -322,6 +329,7 @@ inline void update(const int n) {
                 nodes[i].state = 1;
                 size -= 1;
                 flag = true;
+                common = std::exp2(number / size);
             }
         }
         for (int i = 0; i < nodes.size(); ++i) if (nodes[i].state == -1) {
@@ -356,12 +364,6 @@ inline void update(const int n) {
             cache[t][r].erase(n);
             if (k == position[t][r] && !disable[t][r]) {
                 for (auto m : cache[t][r]) {
-                    auto cof = sinr[m][t][r][k];
-                    for (auto u : cache[t][r]) {
-                        if (u != m) {
-                            cof *= D[k][r][m][u];
-                        }
-                    }
                     auto aim = power[m][t][r][k] * D[k][r][n][m];
                     rest[t][k] += power[m][t][r][k] - aim;
                     power[m][t][r][k] = aim;
