@@ -1022,69 +1022,6 @@ void solve() {
             }
         }
     }
-    while (!tle()) {
-#ifdef __SMZ_NATIVE
-        check(cnt);
-#endif
-        dynamic_array<int, MAXJ> deleted, inserted;
-        for (int j = 0; j < J; ++j) {
-            if (processed[j] && rand() % 10 == 0) {
-                undo(j);
-                cnt -= 1;
-                deleted.push_back(j);
-                if (tle()) {
-                    goto finish;
-                }
-#ifdef __SMZ_NATIVE
-                check(cnt);
-#endif
-            }
-        }
-        shuffle(indices.begin(), indices.end(), engine);
-        for (auto j : indices) {
-            if (processed[j]) {
-                continue;
-            }
-            if (tle()) {
-                goto finish;
-            }
-#ifdef __SMZ_NATIVE
-            check(cnt);
-#endif
-            processed[j] = add(j);
-            cnt += processed[j];
-            if (processed[j]) {
-                inserted.push_back(j);
-            }
-#ifdef __SMZ_NATIVE
-            check(cnt);
-#endif
-        }
-        if (cnt > best) {
-            best = cnt;
-            save();
-        }
-        else {
-            for (auto j : inserted) {
-                undo(j);
-                cnt -= 1;
-            }
-            if (tle()) {
-                goto finish;
-            }
-#ifdef __SMZ_NATIVE
-            check(cnt);
-#endif
-            resume(deleted);
-            cnt += deleted.size();
-#ifdef __SMZ_NATIVE
-            check(cnt);
-            if (cnt != best) {
-                abort();
-            }
-#endif
-        }
-    }
     finish:;
 #ifdef __SMZ_NATIVE
     printf("%d\n", best);
