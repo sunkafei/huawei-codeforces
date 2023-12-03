@@ -805,6 +805,9 @@ inline void check(int best) {
                     abort();
                 }
             }
+            if (cache[t][r].size() == 0 && disable[t][r]) {
+                abort();
+            }
         }
     }
     for (int t = 0; t < T; ++t) {
