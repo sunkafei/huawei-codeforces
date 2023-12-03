@@ -926,7 +926,7 @@ void solve() {
         resume();
         cnt = best;
     }
-    while (!tle(600)) {
+    while (!tle(800)) {
         for (int t = 0; t < T; ++t) {
             for (int r = 0; r < R; ++r) {
                 if (disable[t][r] || cache[t][r].empty()) {
