@@ -926,6 +926,60 @@ void solve() {
         resume();
         cnt = best;
     }
+    while (!tle(800)) {
+        for (int t = 0; t < T; ++t) {
+            for (int r = 0; r < R; ++r) {
+                if (disable[t][r] || cache[t][r].empty()) {
+                    continue;
+                }
+                dynamic_array<int, MAXJ> deleted, inserted;
+                int k = position[t][r];
+                for (auto n : cache[t][r]) {
+                    if (tle()) {
+                        goto finish;
+                    }
+                    int j = query[t][n];
+                    undo(j);
+                    cnt -= 1;
+                    deleted.push_back(j);
+                }
+                shuffle(indices.begin(), indices.end(), engine);
+                for (auto j : indices) {
+                    if (!processed[j] && start[j] <= t && start[j] + length[j] > t) {
+                        if (tle()) {
+                            goto finish;
+                        }
+                        processed[j] = add(j);
+                        cnt += processed[j];
+                        if (processed[j]) {
+                            inserted.push_back(j);
+                        }
+                    }
+                }
+                if (cnt > best) {
+                    best = cnt;
+                    save();
+                }
+                else {
+                    for (auto j : inserted) {
+                        undo(j);
+                        cnt -= 1;
+                    }
+#ifdef __SMZ_NATIVE
+                    check(cnt);
+#endif
+                    resume(deleted);
+                    cnt += deleted.size();
+#ifdef __SMZ_NATIVE
+                    check(cnt);
+                    if (cnt != best) {
+                        abort();
+                    }
+#endif
+                }
+            }
+        }
+    }
     while (!tle()) {
 #ifdef __SMZ_NATIVE
         check(cnt);
