@@ -870,8 +870,9 @@ inline void check(int best) {
 #endif
 }
 inline void save() {
-    for (int n = 0; n < N; ++n) {
-        for (int t = 0; t < T; ++t) {
+    for (int j = 0; j < J; ++j) {
+        const int n = belong[j];
+        for (int t = start[j]; t < start[j] + length[j]; ++t) {
             for (int r = 0; r < R; ++r) {
                 for (int k = 0; k < K; ++k) {
                     answer[n][t][r][k] = power[n][t][r][k];
