@@ -1,7 +1,17 @@
 //distribute并不一定比single优秀，undo可能失败
 //k == 1 bad
-#include <bits/stdc++.h>
-#include <sys/time.h>
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <chrono>
+#include <cmath>
+#include <cassert>
+#include <cstring>
+#include <numeric>
+#include <random>
 constexpr int MAXN = 100 + 1;
 constexpr int MAXK = 10 + 1;
 constexpr int MAXT = 1000 + 1;
@@ -17,7 +27,7 @@ char buffer[MAXBUFFER * 2];
 const char *pointer = buffer + MAXBUFFER;
 double sinr_sum[MAXN][MAXT][MAXR];
 int query[MAXT][MAXN];
-uint64_t start_time;
+const auto start_time = std::chrono::high_resolution_clock::now();
 struct item_t {
     double add;
     double raw;
@@ -118,20 +128,15 @@ public:
         return data + sz;
     }
 };
-inline auto mutime() {
-    timeval v;
-    gettimeofday(&v, nullptr);
-    return v.tv_usec + v.tv_sec * 1000000;
-}
 inline auto tle(const int limit=1600) noexcept {
-    auto now = mutime();
-    auto runtime = now - start_time;
-    if (runtime > limit * 1000) {
+	auto now = std::chrono::high_resolution_clock::now();
+	auto runtime = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time);
+    if (runtime.count() > limit) {
         return true;
     }
     return false;
 }
-inline int read_int() {
+inline int read_int() noexcept {
     const int rest = buffer + MAXBUFFER - pointer;
     if (rest < 128) {
         std::memcpy(buffer, pointer, rest);
@@ -150,7 +155,7 @@ inline int read_int() {
     }
     return x;
 }
-inline double read_double() {
+inline double read_double() noexcept {
     const int rest = buffer + MAXBUFFER - pointer;
     if (rest < 128) {
         std::memcpy(buffer, pointer, rest);
@@ -193,7 +198,7 @@ double weight[MAXN][MAXT][MAXR][MAXK], capacity[MAXN][MAXT][MAXR][MAXK], attachm
 bool processed[MAXJ] = {};
 dynamic_array<int, MAXN> vect[MAXJ];
 double flow = 0;
-inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][MAXT][MAXR][MAXK]) {
+inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][MAXT][MAXR][MAXK]) noexcept {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
     for (int m = 0; m < N; ++m) if (m != n && answer[m][t][r][k] > 0) {
@@ -207,7 +212,7 @@ inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][M
     }
     return numerator / denominator;
 }
-inline void check_answer(int best, double (&answer)[MAXN][MAXT][MAXR][MAXK]=answer) {
+inline void check_answer(int best, double (&answer)[MAXN][MAXT][MAXR][MAXK]=answer) noexcept {
 #ifdef __SMZ_NATIVE
     for (int j = 0; j < J; ++j) {
         const int n = belong[j];
@@ -239,7 +244,7 @@ inline void check_answer(int best, double (&answer)[MAXN][MAXT][MAXR][MAXK]=answ
     }
 #endif
 }
-inline void init() {
+inline void init() noexcept {
     for (int j = 0; j < J; ++j) {
         processed[j] = false;
         const int n = belong[j];
@@ -268,7 +273,7 @@ inline void init() {
         }
     }
 }
-inline void update(const int n) {
+inline void update(const int n) noexcept {
 #ifdef __SMZ_NATIVE
     for (auto [t, r, k] : changed) if (lock[t][r][k] != timestamp) {
         if (power[n][t][r][k] > capacity[n][t][r][k]) {
@@ -397,7 +402,7 @@ inline void update(const int n) {
         }
     }
 }
-inline double add(int j, const double step=0.5) {
+inline double add(int j, const double step=0.5) noexcept {
     const int n = belong[j];
     const double tbs = ::tbs[j] / 192.0;
     double ret = 0, sum = 0;
@@ -656,7 +661,7 @@ inline double add(int j, const double step=0.5) {
     update(n);
     return ret;
 }
-inline double undo(int j) {
+inline double undo(int j) noexcept {
     const int n = belong[j];
     double ret = 0;
     processed[j] = false;
@@ -698,7 +703,7 @@ inline double undo(int j) {
     }
     return ret;
 }
-inline void resume() {
+inline void resume() noexcept {
     init();
     for (int j = 0; j < J; ++j) {
         const int n = belong[j];
@@ -738,7 +743,7 @@ inline void resume() {
         }
     }
 }
-inline void resume(const dynamic_array<int, MAXJ> &vec) {
+inline void resume(const dynamic_array<int, MAXJ> &vec) noexcept {
     for (auto j : vec) {
         processed[j] = true;
         const int n = belong[j];
@@ -788,7 +793,7 @@ inline void resume(const dynamic_array<int, MAXJ> &vec) {
         }
     }
 }
-inline void check(int best) {
+inline void check(int best) noexcept {
 #ifdef __SMZ_NATIVE
     for (int t = 0; t < T; ++t) {
         int sum = 0;
@@ -888,7 +893,7 @@ inline void check(int best) {
     check_answer(best, power);
 #endif
 }
-inline void save() {
+inline void save() noexcept {
     for (int j = 0; j < J; ++j) {
         const int n = belong[j];
         for (int t = start[j]; t < start[j] + length[j]; ++t) {
@@ -900,7 +905,7 @@ inline void save() {
         }
     }
 }
-void solve() {
+void solve() noexcept {
     using item_t = std::pair<double, int>;
     std::priority_queue<item_t, std::vector<item_t>, std::greater<item_t>> queue;
     std::mt19937 engine;
@@ -1072,7 +1077,7 @@ void solve() {
     }
 #endif
 }
-void preprocess() {
+void preprocess() noexcept {
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
@@ -1091,9 +1096,8 @@ void preprocess() {
     }
 }
 int main() {
-    start_time = mutime();
 #ifdef __SMZ_NATIVE
-    freopen("06", "r", stdin);
+    freopen("in2.txt", "r", stdin);
 #endif
     ::N = read_int();
     ::K = read_int();
