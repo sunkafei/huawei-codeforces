@@ -965,6 +965,9 @@ void solve() {
                         undo(j);
                         cnt -= 1;
                     }
+                    if (tle()) {
+                        goto finish;
+                    }
 #ifdef __SMZ_NATIVE
                     check(cnt);
 #endif
@@ -1026,6 +1029,9 @@ void solve() {
             for (auto j : inserted) {
                 undo(j);
                 cnt -= 1;
+            }
+            if (tle()) {
+                goto finish;
             }
 #ifdef __SMZ_NATIVE
             check(cnt);
