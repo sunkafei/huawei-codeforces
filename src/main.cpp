@@ -657,6 +657,9 @@ inline void resume() {
                         position[t][r] = k;
                         processed[query[t][n]] = true;
                         sum += 1;
+                        if (cache[t][r].size() == 1) {
+                            thickness[t] += 1;
+                        }
                     }
                 }
                 if (sum >= 2) {
@@ -675,13 +678,6 @@ inline void resume() {
                         disable[t][r] = true;
                     }
                 }
-            }
-        }
-    }
-    for (int t = 0; t < T; ++t) {
-        for (int r = 0; r < R; ++r) {
-            if (cache[t][r].size()) {
-                thickness[t] += 1;
             }
         }
     }
