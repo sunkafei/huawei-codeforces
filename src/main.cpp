@@ -191,6 +191,7 @@ dynamic_array<std::tuple<int, int, int>, MAXT * MAXR * MAXK> changed;
 dynamic_array<item_t, MAXT * MAXR * MAXK> nodes;
 double weight[MAXN][MAXT][MAXR][MAXK], capacity[MAXN][MAXT][MAXR][MAXK], attachment[MAXN][MAXT][MAXR][MAXK];
 bool processed[MAXJ] = {};
+dynamic_array<int, MAXN> vect[MAXJ];
 inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][MAXT][MAXR][MAXK]) {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
@@ -966,60 +967,58 @@ void solve() {
         resume();
         cnt = best;
     }
-    while (!tle(800)) {
+    while (!tle()) {
+        std::vector<int> times;
         for (int t = 0; t < T; ++t) {
-            for (int r = 0; r < R; ++r) {
-                if (disable[t][r] || cache[t][r].empty()) {
-                    continue;
+            times.push_back(t);
+        }
+        std::shuffle(times.begin(), times.end(), engine);
+        for (auto t : times) {
+            dynamic_array<int, MAXJ> deleted, inserted;
+            for (auto j : vect[t]) if (processed[j] && rand() % 2 == 0) {
+                if (tle()) {
+                    goto finish;
                 }
-                dynamic_array<int, MAXJ> deleted, inserted;
-                int k = position[t][r];
-                for (auto n : cache[t][r]) {
+                undo(j);
+                cnt -= 1;
+                deleted.push_back(j);
+            }
+            shuffle(vect[t].begin(), vect[t].end(), engine);
+            for (auto j : vect[t]) {
+                if (!processed[j]) {
                     if (tle()) {
                         goto finish;
                     }
-                    int j = query[t][n];
+                    processed[j] = add(j);
+                    cnt += processed[j];
+                    if (processed[j]) {
+                        inserted.push_back(j);
+                    }
+                }
+            }
+            if (cnt > best) {
+                best = cnt;
+                save();
+            }
+            else {
+                for (auto j : inserted) {
                     undo(j);
                     cnt -= 1;
-                    deleted.push_back(j);
                 }
-                shuffle(indices.begin(), indices.end(), engine);
-                for (auto j : indices) {
-                    if (!processed[j] && start[j] <= t && start[j] + length[j] > t) {
-                        if (tle()) {
-                            goto finish;
-                        }
-                        processed[j] = add(j);
-                        cnt += processed[j];
-                        if (processed[j]) {
-                            inserted.push_back(j);
-                        }
-                    }
+                if (tle()) {
+                    goto finish;
                 }
-                if (cnt > best) {
-                    best = cnt;
-                    save();
-                }
-                else {
-                    for (auto j : inserted) {
-                        undo(j);
-                        cnt -= 1;
-                    }
-                    if (tle()) {
-                        goto finish;
-                    }
 #ifdef __SMZ_NATIVE
-                    check(cnt);
+                check(cnt);
 #endif
-                    resume(deleted);
-                    cnt += deleted.size();
+                resume(deleted);
+                cnt += deleted.size();
 #ifdef __SMZ_NATIVE
-                    check(cnt);
-                    if (cnt != best) {
-                        abort();
-                    }
-#endif
+                check(cnt);
+                if (cnt != best) {
+                    abort();
                 }
+#endif
             }
         }
     }
@@ -1117,6 +1116,7 @@ void preprocess() {
         for (int t = start[j]; t < start[j] + length[j]; ++t) {
             const int n = belong[j];
             query[t][n] = j;
+            vect[t].push_back(j);
         }
     }
 }
