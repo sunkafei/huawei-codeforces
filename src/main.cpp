@@ -190,6 +190,7 @@ dynamic_array<int, MAXR> RBG[MAXT];
 dynamic_array<std::tuple<int, int, int>, MAXT * MAXR * MAXK> changed;
 dynamic_array<item_t, MAXT * MAXR * MAXK> nodes;
 double weight[MAXN][MAXT][MAXR][MAXK], capacity[MAXN][MAXT][MAXR][MAXK], attachment[MAXN][MAXT][MAXR][MAXK];
+bool processed[MAXJ] = {};
 inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][MAXT][MAXR][MAXK]) {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
@@ -237,6 +238,9 @@ inline void check_answer(int best, double (&answer)[MAXN][MAXT][MAXR][MAXK]=answ
 #endif
 }
 inline void init() {
+    for (int j = 0; j < J; ++j) {
+        processed[j] = false;
+    }
     for (int n = 0; n < N; ++n) {
         for (int t = 0; t < T; ++t) {
             for (int r = 0; r < R; ++r) {
@@ -683,6 +687,19 @@ inline void resume() {
             }
         }
     }
+    for (int j = 0; j < J; ++j) {
+        processed[j] = false;
+        const int n = belong[j];
+        for (int t = start[j]; t < start[j] + length[j]; ++t) {
+            for (int r = 0; r < R; ++r) {
+                if (cache[t][r].contains(n)) {
+                    processed[j] = true;
+                    goto bbk;
+                }
+            }
+        }
+        bbk:;
+    }
 }
 inline void check(int best) {
 #ifdef __SMZ_NATIVE
@@ -806,7 +823,6 @@ void solve() {
     }
     int best = 0, cnt = 0;
     init();
-    bool processed[MAXJ] = {};
     while (queue.size() > 1 && !tle(600)) {
         auto [prev, j] = queue.top(); queue.pop();
         auto val = add(j);
@@ -870,19 +886,6 @@ void solve() {
         cnt = best;
         if (tle()) {
             goto finish;
-        }
-        for (int j = 0; j < J; ++j) {
-            processed[j] = false;
-            const int n = belong[j];
-            for (int t = start[j]; t < start[j] + length[j]; ++t) {
-                for (int r = 0; r < R; ++r) {
-                    if (cache[t][r].contains(n)) {
-                        processed[j] = true;
-                        goto bbk;
-                    }
-                }
-            }
-            bbk:;
         }
 #ifdef __SMZ_NATIVE
         check(cnt);
