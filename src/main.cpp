@@ -192,6 +192,7 @@ dynamic_array<item_t, MAXT * MAXR * MAXK> nodes;
 double weight[MAXN][MAXT][MAXR][MAXK], capacity[MAXN][MAXT][MAXR][MAXK], attachment[MAXN][MAXT][MAXR][MAXK];
 bool processed[MAXJ] = {};
 dynamic_array<int, MAXN> vect[MAXJ];
+double flow = 0;
 inline double calculate_weight(int n, int t, int r, int k, double answer[MAXN][MAXT][MAXR][MAXK]) {
     double numerator = sinr[n][t][r][k] * answer[n][t][r][k];
     double denominator = 1;
@@ -324,6 +325,7 @@ inline void update(const int n) {
             if (common - 1.0 / nodes[i].raw > nodes[i].cap) {
                 auto [t, r, k] = changed[nodes[i].index];
                 rest[t][k] += power[n][t][r][k] - nodes[i].cap;
+                flow += nodes[i].cap - power[n][t][r][k];
                 power[n][t][r][k] = nodes[i].cap;
                 number -= log2(1.0 + nodes[i].cap * nodes[i].raw);
                 number += nodes[i].log;
@@ -357,16 +359,19 @@ inline void update(const int n) {
                 value += 5e-7;
             }
             rest[t][k] += power[n][t][r][k] - value;
+            flow += value - power[n][t][r][k];
             power[n][t][r][k] = value;
         }
         else if (nodes[i].state == -1) {
             rest[t][k] += power[n][t][r][k];
+            flow -= power[n][t][r][k];
             power[n][t][r][k] = 0;
             cache[t][r].erase(n);
             if (k == position[t][r] && !disable[t][r]) {
                 for (auto m : cache[t][r]) {
                     auto aim = power[m][t][r][k] * D[k][r][n][m];
                     rest[t][k] += power[m][t][r][k] - aim;
+                    flow -= power[m][t][r][k] - aim;
                     power[m][t][r][k] = aim;
                 }
             }
@@ -399,6 +404,7 @@ inline double add(int j, const double step=0.5) {
     std::priority_queue<std::tuple<double, int, int>> candidates;
     std::vector<std::tuple<int, int, int, int, double>> backup;
     timestamp += 1;
+    flow = 0;
     changed.clear();
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         RBG[t].clear();
@@ -453,6 +459,7 @@ inline double add(int j, const double step=0.5) {
                         power[n][t][r][k] += distribute;
                         capacity[n][t][r][k] = power[n][t][r][k];
                         ret += 3;
+                        flow += distribute;
                         rest[t][k] -= distribute;
                         product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
                         size[t][k] += 1;
@@ -474,6 +481,7 @@ inline double add(int j, const double step=0.5) {
                             double delta = (std::exp2(newval) - 1) / sinr[n][t][r][k] + EPS - power[n][t][r][k];
                             delta = std::min(delta, 0.0);
                             power[n][t][r][k] += delta;
+                            flow += delta;
                             rest[t][k] -= delta;
                             if (cache[t][r].size() >= 2) for (int x = i + 1; x < indices.size(); ++x) {
                                 double distribute = std::min(rest[t][indices[x]], 1.0);
@@ -521,12 +529,14 @@ inline double add(int j, const double step=0.5) {
                     }
                     product[t][k] *= factor;
                     rest[t][k] -= distribute;
+                    flow += distribute;
                     ret += 3;
                 }
                 else if (val2 > previous) {
                     sum -= previous;
                     sum += val2;
                     power[n][t][r][k] = distribute;
+                    flow += distribute;
                     capacity[n][t][r][k] = power[n][t][r][k];
                     product[t][k] *= power[n][t][r][k] * sinr[n][t][r][k];
                     size[t][k] += 1;
@@ -558,6 +568,7 @@ inline double add(int j, const double step=0.5) {
                         pw = std::pow(pw, 1.0 / size[t][k]);
                         for (auto s : RBG[t]) if (power[n][t][s][k] > 0) {
                             rest[t][k] += power[n][t][s][k] - pw;
+                            flow += pw - power[n][t][s][k];
                             power[n][t][s][k] = pw;
                         }
                     }
@@ -598,6 +609,7 @@ inline double add(int j, const double step=0.5) {
                 weight[n][t][r][k] = cof;
                 auto need = (std::exp2(tbs - sum) - 1.0) / cof + EPS;
                 power[n][t][r][k] = std::min({rest[t][k] - tot, four - pw, need, step});
+                flow += tot + power[n][t][r][k];
                 capacity[n][t][r][k] = std::min({rest[t][k] - tot, four - pw});
                 sum += std::log2(1.0 + power[n][t][r][k] * cof);
                 rest[t][k] -= tot + power[n][t][r][k];
@@ -610,6 +622,7 @@ inline double add(int j, const double step=0.5) {
                 auto need = (std::exp2(tbs - sum) - 1.0) / weight[n][t][r][k] + EPS;
                 double distribute = std::min({capacity[n][t][r][k] - power[n][t][r][k], need - power[n][t][r][k], step}); 
                 power[n][t][r][k] = std::min(power[n][t][r][k] + distribute, capacity[n][t][r][k]);
+                flow += distribute;
                 double contribution = std::log2(1.0 + power[n][t][r][k] * weight[n][t][r][k]);
                 sum += contribution;
                 rest[t][k] -= distribute;
@@ -643,8 +656,9 @@ inline double add(int j, const double step=0.5) {
     update(n);
     return ret;
 }
-inline void undo(int j) {
+inline double undo(int j) {
     const int n = belong[j];
+    double ret = 0;
     processed[j] = false;
     for (int t = start[j]; t < start[j] + length[j]; ++t) {
         for (int r = 0; r < R; ++r) {
@@ -656,6 +670,7 @@ inline void undo(int j) {
                     for (int k = 0; k < K; ++k) {
                         if (power[n][t][r][k] > 0) {
                             rest[t][k] += power[n][t][r][k];
+                            ret += power[n][t][r][k];
                             power[n][t][r][k] = 0;
                         }
                     }
@@ -665,11 +680,13 @@ inline void undo(int j) {
                 const int k = position[t][r];
                 if (power[n][t][r][k] > 0) {
                     rest[t][k] += power[n][t][r][k];
+                    ret += power[n][t][r][k];
                     power[n][t][r][k] = 0;
                     cache[t][r].erase(n);
                     for (auto m : cache[t][r]) {
                         auto aim = power[m][t][r][k] * D[k][r][n][m];
                         rest[t][k] += power[m][t][r][k] - aim;
+                        ret += power[m][t][r][k] - aim;
                         power[m][t][r][k] = aim;
                     }
                     if (cache[t][r].empty()) {
@@ -679,6 +696,7 @@ inline void undo(int j) {
             }
         }
     }
+    return ret;
 }
 inline void resume() {
     init();
@@ -975,11 +993,12 @@ void solve() {
         std::shuffle(times.begin(), times.end(), engine);
         for (auto t : times) {
             dynamic_array<int, MAXJ> deleted, inserted;
+            double delta = 0;
             for (auto j : vect[t]) if (processed[j] && rand() % 2 == 0) {
                 if (tle()) {
                     goto finish;
                 }
-                undo(j);
+                delta -= undo(j);
                 cnt -= 1;
                 deleted.push_back(j);
             }
@@ -992,11 +1011,12 @@ void solve() {
                     processed[j] = add(j);
                     cnt += processed[j];
                     if (processed[j]) {
+                        delta += flow;
                         inserted.push_back(j);
                     }
                 }
             }
-            if (cnt > best) {
+            if (cnt > best || (cnt == best && delta < 0)) {
                 best = cnt;
                 save();
             }
