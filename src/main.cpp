@@ -1128,6 +1128,8 @@ void solve() noexcept {
                         ++pointer;
                     }
                 }
+                *pointer++ = '\n';
+                *pointer = 0;
                 fwrite(buffer, 1, pointer - buffer, stdout);
             }
         }
