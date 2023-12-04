@@ -1123,17 +1123,18 @@ void solve() noexcept {
             for (int r = 0; r < R; ++r) {
                 char *pointer = buffer;
                 for (int n = 0; n < N; ++n) {
-                    sprintf(pointer, "%.8f ", answer[n][t][r][k]);
+                    std::sprintf(pointer, "%.8f ", answer[n][t][r][k]);
                     while (*pointer) {
                         ++pointer;
                     }
                 }
                 *pointer++ = '\n';
                 *pointer = 0;
-                fwrite(buffer, 1, pointer - buffer, stdout);
+                std::fwrite(buffer, 1, pointer - buffer, stdout);
             }
         }
     }
+    std::fflush(stdout);
 #endif
 }
 void preprocess() noexcept {
