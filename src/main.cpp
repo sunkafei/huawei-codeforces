@@ -1,5 +1,4 @@
-//distribute并不一定比single优秀，undo可能失败
-//k == 1 bad
+//Final version
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -989,6 +988,60 @@ void solve() noexcept {
     if (!tle()) {
         resume();
         cnt = best;
+    }
+    while (!tle(600)) {
+        for (int t = 0; t < T && !tle(600); ++t) {
+            for (int r = 0; r < R; ++r) {
+                if (disable[t][r] || cache[t][r].empty()) {
+                    continue;
+                }
+                dynamic_array<int, MAXJ> deleted, inserted;
+                int k = position[t][r];
+                for (auto n : cache[t][r]) {
+                    if (tle()) {
+                        goto finish;
+                    }
+                    int j = query[t][n];
+                    undo(j);
+                    cnt -= 1;
+                    deleted.push_back(j);
+                }
+                shuffle(vect[t].begin(), vect[t].end(), engine);
+                for (auto j : vect[t]) {
+                    if (!processed[j]) {
+                        if (tle()) {
+                            goto finish;
+                        }
+                        processed[j] = add(j);
+                        cnt += processed[j];
+                        if (processed[j]) {
+                            inserted.push_back(j);
+                        }
+                    }
+                }
+                if (cnt > best) {
+                    best = cnt;
+                    save();
+                }
+                else {
+                    for (auto j : inserted) {
+                        undo(j);
+                        cnt -= 1;
+                    }
+#ifdef __SMZ_NATIVE
+                    check(cnt);
+#endif
+                    resume(deleted);
+                    cnt += deleted.size();
+#ifdef __SMZ_NATIVE
+                    check(cnt);
+                    if (cnt != best) {
+                        abort();
+                    }
+#endif
+                }
+            }
+        }
     }
     while (!tle()) {
         std::vector<int> times;
