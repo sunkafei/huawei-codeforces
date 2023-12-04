@@ -1121,10 +1121,14 @@ void solve() noexcept {
     for (int t = 0; t < T; ++t) {
         for (int k = 0; k < K; ++k) {
             for (int r = 0; r < R; ++r) {
+                char *pointer = buffer;
                 for (int n = 0; n < N; ++n) {
-                    printf("%.9f ", answer[n][t][r][k]);
+                    sprintf(pointer, "%.8f ", answer[n][t][r][k]);
+                    while (*pointer) {
+                        ++pointer;
+                    }
                 }
-                puts("");
+                fwrite(buffer, 1, pointer - buffer, stdout);
             }
         }
     }
